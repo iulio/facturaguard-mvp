@@ -231,3 +231,18 @@ class InvitationAcceptWithAccountOut(BaseModel):
     organization_name: str
     role: str
     status: str
+
+
+class PasswordResetRequestIn(BaseModel):
+    email: EmailStr
+
+class PasswordResetConfirmIn(BaseModel):
+    token: str
+    new_password: str
+
+class PasswordChangeIn(BaseModel):
+    current_password: str
+    new_password: str
+
+class MessageOut(BaseModel):
+    message: str

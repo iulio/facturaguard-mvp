@@ -26,7 +26,11 @@ from .schemas import (
     InvitationOut,
     PublicInvitationOut,
     LoginIn,
+    MessageOut,
     MonthlyReport,
+    PasswordChangeIn,
+    PasswordResetConfirmIn,
+    PasswordResetRequestIn,
     PortfolioSummary,
     OrganizationCreate,
     OrganizationMemberCreate,
@@ -47,6 +51,7 @@ from .services import (
     create_alert_for_invoice,
     explain_anaf_error,
 )
+from .password_service import change_password, create_password_reset_token, reset_password_with_token
 from .portfolio_service import build_portfolio_summary
 from .report_service import generate_invoices_csv, generate_monthly_report_pdf
 from .sync_service import (
@@ -133,6 +138,49 @@ def login(payload: LoginIn, db: Session = Depends(get_db)):
 @app.get("/auth/me", response_model=UserOut)
 def me(current_user: User = Depends(get_current_user)):
     return current_user
+
+
+@app.post("/auth/password-reset/request", response_model=MessageOut)
+def request_password_reset(
+    payload: PasswordResetRequestIn,
+    db: Session = Depends(get_db),
+):
+    user = db.query(User).filter(User.email == payload.email).first()
+
+    # Do not reveal whether the email exists.
+    if user:
+        create_password_reset_token(db, user)
+        db.commit()
+
+    return MessageOut(message="Dacă emailul există, am trimis instrucțiuni de resetare.")
+
+@app.post("/auth/password-reset/confirm", response_model=MessageOut)
+def confirm_password_reset(
+    payload: PasswordResetConfirmIn,
+    db: Session = Depends(get_db),
+):
+    try:
+        reset_password_with_token(db, payload.token, payload.new_password)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    db.commit()
+    return MessageOut(message="Parola a fost resetată.")
+
+@app.post("/auth/password-change", response_model=MessageOut)
+def change_current_user_password(
+    payload: PasswordChangeIn,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        change_password(db, current_user, payload.current_password, payload.new_password)
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc))
+
+    db.commit()
+    return MessageOut(message="Parola a fost schimbată.")
+
 
 
 @app.get("/portfolio", response_model=PortfolioSummary)

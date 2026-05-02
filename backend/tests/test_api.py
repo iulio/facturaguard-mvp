@@ -268,3 +268,57 @@ def test_public_invitation_accept_with_account():
         headers=auth_header(payload["access_token"]),
     )
     assert dashboard_response.status_code == 200
+
+
+def test_password_reset_and_change_flow():
+    email, token = register_user("password-user")
+
+    request_response = client.post(
+        "/auth/password-reset/request",
+        json={"email": email},
+    )
+    assert request_response.status_code == 200
+
+    from app.database import SessionLocal
+    from app.models import PasswordResetToken, User
+
+    db = SessionLocal()
+    try:
+        user = db.query(User).filter(User.email == email).first()
+        reset_token = (
+            db.query(PasswordResetToken)
+            .filter(PasswordResetToken.user_id == user.id)
+            .order_by(PasswordResetToken.id.desc())
+            .first()
+        )
+        assert reset_token is not None
+        token_value = reset_token.token
+    finally:
+        db.close()
+
+    confirm_response = client.post(
+        "/auth/password-reset/confirm",
+        json={"token": token_value, "new_password": "NewPassword123!"},
+    )
+    assert confirm_response.status_code == 200, confirm_response.text
+
+    login_response = client.post(
+        "/auth/login",
+        json={"email": email, "password": "NewPassword123!"},
+    )
+    assert login_response.status_code == 200
+
+    new_access_token = login_response.json()["access_token"]
+
+    change_response = client.post(
+        "/auth/password-change",
+        json={"current_password": "NewPassword123!", "new_password": "FinalPassword123!"},
+        headers=auth_header(new_access_token),
+    )
+    assert change_response.status_code == 200
+
+    final_login = client.post(
+        "/auth/login",
+        json={"email": email, "password": "FinalPassword123!"},
+    )
+    assert final_login.status_code == 200

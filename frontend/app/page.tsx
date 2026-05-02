@@ -23,6 +23,7 @@ export default function Home() {
   const [invitations, setInvitations] = useState<any[]>([]);
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
+  const [resetEmail, setResetEmail] = useState("");
 
   useEffect(() => { setAuthed(Boolean(getToken())); setReady(true); }, []);
   useEffect(() => { if (authed) { loadOrganizations(); loadPortfolio(); } }, [authed]);
@@ -48,6 +49,23 @@ export default function Home() {
       const data = await apiFetch(path, { method: "POST", body: JSON.stringify(body) });
       setToken(data.access_token); setAuthed(true); setMsg("Autentificare reușită.");
     } catch (x: any) { setErr(x.message); }
+  }
+
+  async function requestPasswordReset() {
+    setErr("");
+    setMsg("");
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000"}/auth/password-reset/request`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: resetEmail }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || "Nu am putut cere resetarea.");
+      setMsg(data.message);
+    } catch (x: any) {
+      setErr(x.message);
+    }
   }
 
   async function loadOrganizations() {
@@ -153,6 +171,15 @@ export default function Home() {
           <button className="btn secondary" style={{ marginTop: 12 }} onClick={() => setMode(mode === "register" ? "login" : "register")}>
             {mode === "register" ? "Am deja cont" : "Creează cont nou"}
           </button>
+
+          <div style={{ marginTop: 18 }}>
+            <p style={{ color: "#64748b", fontSize: 14 }}>Ai uitat parola?</p>
+            <div className="grid">
+              <input className="input" placeholder="Email pentru resetare" value={resetEmail} onChange={(e) => setResetEmail(e.target.value)} />
+              <button className="btn secondary" type="button" onClick={requestPasswordReset}>Trimite link resetare</button>
+            </div>
+          </div>
+
           {err && <p className="error">{err}</p>}
           {msg && <p className="success">{msg}</p>}
         </div>

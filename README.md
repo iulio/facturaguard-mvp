@@ -359,3 +359,30 @@ POST /invitations/accept-with-account
 3. Invited user opens link.
 4. User creates password and accepts invite.
 5. User is logged in automatically.
+
+
+---
+
+## v1.3 additions
+
+This version adds password recovery and password change:
+
+- password reset token table
+- password reset request endpoint
+- password reset confirmation endpoint
+- authenticated password change endpoint
+- dry-run reset email
+- frontend page:
+  ```txt
+  /reset-password?token=<token>
+  ```
+- reset request UI on login screen
+- backend tests for password reset and password change
+
+### New endpoints
+
+```txt
+POST /auth/password-reset/request
+POST /auth/password-reset/confirm
+POST /auth/password-change
+```
