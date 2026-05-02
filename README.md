@@ -328,3 +328,34 @@ POST /invitations/accept
 
 For now, the invited user must already have an account.
 The next production step is a public invitation acceptance page that supports account creation.
+
+
+---
+
+## v1.2 additions
+
+This version improves invitation onboarding:
+
+- public invitation details endpoint
+- accept invitation and create account in one flow
+- frontend page:
+  ```txt
+  /accept-invite?token=<token>
+  ```
+- automatic login after accepting invitation
+- backend tests for public invitation acceptance
+
+### New endpoints
+
+```txt
+GET  /invitations/public/{token}
+POST /invitations/accept-with-account
+```
+
+### Flow
+
+1. Accountant sends invitation.
+2. Email contains `/accept-invite?token=...`.
+3. Invited user opens link.
+4. User creates password and accepts invite.
+5. User is logged in automatically.

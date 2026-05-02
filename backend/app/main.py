@@ -9,7 +9,7 @@ from .auth import create_access_token, get_current_user, hash_password, verify_p
 from sqlalchemy import text
 from .database import Base, engine, get_db
 from .jobs import run_status_check, start_scheduler, stop_scheduler
-from .invitation_service import accept_invitation, create_invitation
+from .invitation_service import accept_invitation, create_invitation, get_public_invitation
 from .middleware import InMemoryRateLimitMiddleware, RequestTimingMiddleware
 from .models import Alert, AuditLog, Invoice, Organization, OrganizationIntegration, OrganizationInvitation, OrganizationMember, User
 from .parsers import parse_csv_upload, parse_xml_upload, parse_zip_upload
@@ -20,8 +20,11 @@ from .schemas import (
     InvoiceOut,
     InvitationAcceptIn,
     InvitationAcceptOut,
+    InvitationAcceptWithAccountIn,
+    InvitationAcceptWithAccountOut,
     InvitationCreate,
     InvitationOut,
+    PublicInvitationOut,
     LoginIn,
     MonthlyReport,
     PortfolioSummary,
@@ -237,6 +240,72 @@ def list_organization_invitations(
         .filter(OrganizationInvitation.organization_id == org_id)
         .order_by(OrganizationInvitation.created_at.desc())
         .all()
+    )
+
+
+@app.get("/invitations/public/{token}", response_model=PublicInvitationOut)
+def get_public_invitation_details(
+    token: str,
+    db: Session = Depends(get_db),
+):
+    try:
+        invitation = get_public_invitation(db, token)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    organization = db.query(Organization).filter(Organization.id == invitation.organization_id).first()
+
+    return PublicInvitationOut(
+        organization_name=organization.name if organization else "",
+        invited_email=invitation.invited_email,
+        role=invitation.role,
+        status=invitation.status,
+        expires_at=invitation.expires_at,
+    )
+
+@app.post("/invitations/accept-with-account", response_model=InvitationAcceptWithAccountOut)
+def accept_invitation_with_account(
+    payload: InvitationAcceptWithAccountIn,
+    db: Session = Depends(get_db),
+):
+    try:
+        invitation = get_public_invitation(db, payload.token)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    existing_user = db.query(User).filter(User.email == invitation.invited_email).first()
+
+    if existing_user:
+        raise HTTPException(
+            status_code=400,
+            detail="Există deja un cont cu acest email. Autentifică-te și acceptă invitația din cont.",
+        )
+
+    user = User(
+        name=payload.name,
+        email=invitation.invited_email,
+        password_hash=hash_password(payload.password),
+        role="client",
+    )
+    db.add(user)
+    db.flush()
+
+    try:
+        invitation, member = accept_invitation(db, payload.token, user)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    organization = db.query(Organization).filter(Organization.id == invitation.organization_id).first()
+    access_token = create_access_token(user.email)
+
+    db.commit()
+
+    return InvitationAcceptWithAccountOut(
+        access_token=access_token,
+        organization_id=invitation.organization_id,
+        organization_name=organization.name if organization else "",
+        role=member.role,
+        status=invitation.status,
     )
 
 @app.post("/invitations/accept", response_model=InvitationAcceptOut)

@@ -210,3 +210,24 @@ class InvitationAcceptOut(BaseModel):
     organization_name: str
     role: str
     status: str
+
+
+class PublicInvitationOut(BaseModel):
+    organization_name: str
+    invited_email: EmailStr
+    role: str
+    status: str
+    expires_at: datetime
+
+class InvitationAcceptWithAccountIn(BaseModel):
+    token: str
+    name: str
+    password: str
+
+class InvitationAcceptWithAccountOut(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    organization_id: int
+    organization_name: str
+    role: str
+    status: str

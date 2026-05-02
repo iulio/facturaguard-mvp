@@ -228,3 +228,43 @@ def test_invitation_flow_existing_user():
         headers=auth_header(invitee_token),
     )
     assert dashboard_response.status_code == 200
+
+
+def test_public_invitation_accept_with_account():
+    _, owner_token = register_user("public-invite-owner")
+    invited_email = unique_email("new-client")
+
+    org_response = client.post(
+        "/organizations",
+        json={"name": "Public Invite SRL", "cui": "RO77711122"},
+        headers=auth_header(owner_token),
+    )
+    assert org_response.status_code == 200
+    org_id = org_response.json()["id"]
+
+    invite_response = client.post(
+        f"/organizations/{org_id}/invitations",
+        json={"email": invited_email, "role": "client_viewer"},
+        headers=auth_header(owner_token),
+    )
+    assert invite_response.status_code == 200, invite_response.text
+    token = invite_response.json()["token"]
+
+    public_response = client.get(f"/invitations/public/{token}")
+    assert public_response.status_code == 200
+    assert public_response.json()["invited_email"] == invited_email
+
+    accept_response = client.post(
+        "/invitations/accept-with-account",
+        json={"token": token, "name": "New Client", "password": "Password123!"},
+    )
+    assert accept_response.status_code == 200, accept_response.text
+    payload = accept_response.json()
+    assert payload["access_token"]
+    assert payload["status"] == "accepted"
+
+    dashboard_response = client.get(
+        f"/organizations/{org_id}/dashboard",
+        headers=auth_header(payload["access_token"]),
+    )
+    assert dashboard_response.status_code == 200

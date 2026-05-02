@@ -127,3 +127,24 @@ def accept_invitation(db: Session, token: str, user: User) -> tuple[Organization
     )
 
     return invitation, member
+
+
+def get_public_invitation(db: Session, token: str) -> OrganizationInvitation:
+    invitation = (
+        db.query(OrganizationInvitation)
+        .filter(OrganizationInvitation.token == token)
+        .first()
+    )
+
+    if not invitation:
+        raise ValueError("Invitația nu există.")
+
+    if invitation.status != "pending":
+        raise ValueError("Invitația nu mai este activă.")
+
+    if invitation.expires_at < datetime.utcnow():
+        invitation.status = "expired"
+        db.flush()
+        raise ValueError("Invitația a expirat.")
+
+    return invitation
