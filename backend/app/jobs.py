@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from .database import SessionLocal
 from .models import Invoice, Organization, User
 from .services import compute_internal_status, create_alert_for_invoice
+from .sync_service import sync_organization_invoices
 
 scheduler: BackgroundScheduler | None = None
 
@@ -14,22 +15,13 @@ def run_status_check(db: Session | None = None) -> dict:
         db = SessionLocal()
     checked = changed = alerts = 0
     try:
-        invoices = db.query(Invoice).all()
-        for invoice in invoices:
-            checked += 1
-            old_status = invoice.internal_status
-            new_status, due_date = compute_internal_status(invoice.issue_date, invoice.anaf_status)
-            invoice.due_submission_date = due_date
-            if old_status != new_status:
-                invoice.internal_status = new_status
-                invoice.updated_at = datetime.utcnow()
-                changed += 1
-            org = db.query(Organization).filter(Organization.id == invoice.organization_id).first()
-            if org:
-                owner = db.query(User).filter(User.id == org.owner_user_id).first()
-                alert = create_alert_for_invoice(db, org, invoice, notify_email=owner.email if owner else None)
-                if alert:
-                    alerts += 1
+        organizations = db.query(Organization).all()
+        for org in organizations:
+            owner = db.query(User).filter(User.id == org.owner_user_id).first()
+            result = sync_organization_invoices(db, org, actor=owner, only_open=True)
+            checked += result["checked"]
+            changed += result["changed"]
+            alerts += len([item for item in result["results"] if item.get("message")])
         db.commit()
         return {"checked": checked, "changed": changed, "alerts_created_or_existing": alerts, "ran_at": datetime.utcnow().isoformat()}
     finally:

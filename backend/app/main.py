@@ -9,7 +9,7 @@ from .auth import create_access_token, get_current_user, hash_password, verify_p
 import os
 from .database import Base, engine, get_db
 from .jobs import run_status_check, start_scheduler, stop_scheduler
-from .models import Alert, AuditLog, Invoice, Organization, OrganizationMember, User
+from .models import Alert, AuditLog, Invoice, Organization, OrganizationIntegration, OrganizationMember, User
 from .parsers import parse_csv_upload, parse_xml_upload, parse_zip_upload
 from .schemas import (
     AlertOut,
@@ -22,6 +22,10 @@ from .schemas import (
     OrganizationMemberCreate,
     OrganizationMemberOut,
     OrganizationOut,
+    IntegrationOut,
+    IntegrationTestOut,
+    BulkInvoiceSyncResult,
+    InvoiceSyncResult,
     TokenOut,
     UserCreate,
     UserOut,
@@ -31,6 +35,12 @@ from .services import (
     compute_internal_status,
     create_alert_for_invoice,
     explain_anaf_error,
+)
+from .sync_service import (
+    get_or_create_anaf_integration,
+    sync_invoice_status,
+    sync_organization_invoices,
+    test_anaf_connection,
 )
 
 if os.getenv("AUTO_CREATE_TABLES", "true").lower() == "true":
@@ -300,6 +310,67 @@ async def upload_invoices(
         db.refresh(invoice)
 
     return created
+
+
+@app.get("/organizations/{org_id}/integrations/anaf", response_model=IntegrationOut)
+def get_anaf_integration(
+    org_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    organization = get_accessible_organization(db, org_id, current_user)
+    integration = get_or_create_anaf_integration(db, organization.id)
+    db.commit()
+    db.refresh(integration)
+    return integration
+
+@app.post("/organizations/{org_id}/integrations/anaf/test", response_model=IntegrationTestOut)
+def test_anaf_integration(
+    org_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    organization = get_accessible_organization(db, org_id, current_user, require_write=True)
+    integration = test_anaf_connection(db, organization, actor=current_user)
+    db.commit()
+    return IntegrationTestOut(
+        provider=integration.provider,
+        mode=integration.mode,
+        status=integration.status,
+        message="Mock ANAF connector tested successfully.",
+    )
+
+@app.post("/organizations/{org_id}/invoices/{invoice_id}/sync-status", response_model=InvoiceSyncResult)
+def sync_single_invoice_status(
+    org_id: int,
+    invoice_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    organization = get_accessible_organization(db, org_id, current_user, require_write=True)
+    invoice = (
+        db.query(Invoice)
+        .filter(Invoice.id == invoice_id, Invoice.organization_id == org_id)
+        .first()
+    )
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Factura nu a fost găsită.")
+
+    result = sync_invoice_status(db, organization, invoice, actor=current_user)
+    db.commit()
+    return result
+
+@app.post("/organizations/{org_id}/invoices/sync-statuses", response_model=BulkInvoiceSyncResult)
+def sync_all_invoice_statuses(
+    org_id: int,
+    only_open: bool = True,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    organization = get_accessible_organization(db, org_id, current_user, require_write=True)
+    result = sync_organization_invoices(db, organization, actor=current_user, only_open=only_open)
+    db.commit()
+    return result
 
 @app.get("/organizations/{org_id}/alerts", response_model=list[AlertOut])
 def list_alerts(

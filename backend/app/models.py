@@ -32,6 +32,7 @@ class Organization(Base):
     alerts = relationship("Alert", back_populates="organization", cascade="all, delete-orphan")
     members = relationship("OrganizationMember", back_populates="organization", cascade="all, delete-orphan")
     audit_logs = relationship("AuditLog", back_populates="organization", cascade="all, delete-orphan")
+    integrations = relationship("OrganizationIntegration", back_populates="organization", cascade="all, delete-orphan")
 
 class OrganizationMember(Base):
     __tablename__ = "organization_members"
@@ -63,6 +64,8 @@ class Invoice(Base):
     anaf_status: Mapped[str] = mapped_column(String(50), default="pending")
     anaf_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     plain_explanation: Mapped[str | None] = mapped_column(Text, nullable=True)
+    anaf_upload_id: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    last_synced_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
@@ -100,3 +103,18 @@ class AuditLog(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     organization = relationship("Organization", back_populates="audit_logs")
+
+
+class OrganizationIntegration(Base):
+    __tablename__ = "organization_integrations"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    organization_id: Mapped[int] = mapped_column(ForeignKey("organizations.id"), index=True)
+    provider: Mapped[str] = mapped_column(String(80), default="anaf")
+    mode: Mapped[str] = mapped_column(String(40), default="mock")
+    status: Mapped[str] = mapped_column(String(40), default="not_configured")
+    config_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    last_checked_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    organization = relationship("Organization", back_populates="integrations")

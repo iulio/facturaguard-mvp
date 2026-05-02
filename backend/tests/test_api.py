@@ -76,3 +76,38 @@ def test_member_viewer_can_read_but_not_upload():
         headers=auth_header(viewer_token),
     )
     assert upload_response.status_code == 403
+
+
+def test_mock_anaf_sync_flow():
+    _, token = register_user("sync-owner")
+
+    org_response = client.post(
+        "/organizations",
+        json={"name": "Sync Test SRL", "cui": "RO11223344"},
+        headers=auth_header(token),
+    )
+    assert org_response.status_code == 200
+    org_id = org_response.json()["id"]
+
+    upload_response = client.post(
+        f"/organizations/{org_id}/invoices/upload",
+        files={"file": ("invoices.csv", "invoice_number,issue_date,customer_name,customer_cui,total_amount,anaf_status\nSYNC-1,2026-04-27,Client,RO1,100,pending\n", "text/csv")},
+        headers=auth_header(token),
+    )
+    assert upload_response.status_code == 200, upload_response.text
+
+    test_response = client.post(
+        f"/organizations/{org_id}/integrations/anaf/test",
+        headers=auth_header(token),
+    )
+    assert test_response.status_code == 200
+    assert test_response.json()["status"] == "connected"
+
+    sync_response = client.post(
+        f"/organizations/{org_id}/invoices/sync-statuses",
+        headers=auth_header(token),
+    )
+    assert sync_response.status_code == 200, sync_response.text
+    payload = sync_response.json()
+    assert payload["checked"] >= 1
+    assert "results" in payload

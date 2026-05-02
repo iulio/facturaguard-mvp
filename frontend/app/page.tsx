@@ -74,6 +74,14 @@ export default function Home() {
     await refresh(active);
   }
 
+  async function testAnafAndSync() {
+    if (!active) return;
+    await apiFetch(`/organizations/${active}/integrations/anaf/test`, { method: "POST" });
+    const data = await apiFetch(`/organizations/${active}/invoices/sync-statuses`, { method: "POST" });
+    setMsg(`Mock ANAF sync: ${data.checked} facturi verificate, ${data.changed} schimbate.`);
+    await refresh(active);
+  }
+
   function logout() { clearToken(); setAuthed(false); setOrgs([]); setInvoices([]); setAlerts([]); setSummary(null); setActive(null); }
 
   if (!ready) return null;
@@ -138,7 +146,7 @@ export default function Home() {
       </section>
 
       <section className="card" style={{ marginTop: 18 }}>
-        <div className="header"><h2>Alerte</h2><button className="btn secondary" onClick={runStatusCheck}>Rulează verificarea</button></div>
+        <div className="header"><h2>Alerte</h2><button className="btn secondary" onClick={runStatusCheck}>Rulează verificarea</button><button className="btn secondary" onClick={testAnafAndSync}>Mock ANAF sync</button></div>
         {alerts.map((a) => <div key={a.id} className="card" style={{ boxShadow: "none", marginBottom: 12 }}><span className={`badge ${a.severity}`}>{a.severity}</span><h3>{a.title}</h3><p>{a.message}</p></div>)}
         {alerts.length === 0 && <p>Nu există alerte.</p>}
       </section>

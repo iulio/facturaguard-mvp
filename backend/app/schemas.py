@@ -67,6 +67,8 @@ class InvoiceOut(BaseModel):
     anaf_status: str
     anaf_message: str | None = None
     plain_explanation: str | None = None
+    anaf_upload_id: str | None = None
+    last_synced_at: datetime | None = None
     created_at: datetime
 
     class Config:
@@ -123,3 +125,37 @@ class MonthlyReport(BaseModel):
     total_amount: float
     top_errors: list[dict]
     recommendations: list[str]
+
+
+class IntegrationOut(BaseModel):
+    id: int
+    organization_id: int
+    provider: str
+    mode: str
+    status: str
+    config_json: str | None = None
+    last_checked_at: datetime | None = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class IntegrationTestOut(BaseModel):
+    provider: str
+    mode: str
+    status: str
+    message: str
+
+class InvoiceSyncResult(BaseModel):
+    invoice_id: int
+    invoice_number: str
+    old_status: str
+    new_status: str
+    changed: bool
+    message: str | None = None
+
+class BulkInvoiceSyncResult(BaseModel):
+    organization_id: int
+    checked: int
+    changed: int
+    results: list[InvoiceSyncResult]

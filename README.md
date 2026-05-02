@@ -159,3 +159,36 @@ sqlite:///./facturaguard.db
 ```
 
 For production, use PostgreSQL.
+
+
+---
+
+## v0.7 additions
+
+This version introduces a connector abstraction for RO e-Factura/ANAF:
+
+- `OrganizationIntegration` model
+- mock ANAF connector
+- deterministic status simulation for local development
+- invoice fields:
+  - `anaf_upload_id`
+  - `last_synced_at`
+- single invoice status sync endpoint
+- bulk organization invoice status sync endpoint
+- ANAF connection test endpoint
+- Alembic migration `0002_anaf_integration`
+- frontend button: `Mock ANAF sync`
+
+### New endpoints
+
+```txt
+GET  /organizations/{org_id}/integrations/anaf
+POST /organizations/{org_id}/integrations/anaf/test
+POST /organizations/{org_id}/invoices/{invoice_id}/sync-status
+POST /organizations/{org_id}/invoices/sync-statuses
+```
+
+### Important
+
+The ANAF connector in v0.7 is a mock connector. It does not call ANAF/SPV.
+It exists to stabilize the product architecture before implementing the live connector.
