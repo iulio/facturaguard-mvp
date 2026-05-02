@@ -42,6 +42,10 @@ class Settings(BaseSettings):
     s3_access_key_id: str | None = Field(default=None, alias="S3_ACCESS_KEY_ID")
     s3_secret_access_key: str | None = Field(default=None, alias="S3_SECRET_ACCESS_KEY")
 
+    netopia_mock_enabled: bool = Field(default=True, alias="NETOPIA_MOCK_ENABLED")
+    netopia_mock_return_url: str = Field(default="http://localhost:3000/billing/return", alias="NETOPIA_MOCK_RETURN_URL")
+    netopia_mock_webhook_secret: str = Field(default="dev-netopia-webhook-secret", alias="NETOPIA_MOCK_WEBHOOK_SECRET")
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

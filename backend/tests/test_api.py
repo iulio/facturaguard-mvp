@@ -403,3 +403,43 @@ def test_billing_plans_subscription_and_usage():
     )
     assert usage_response.status_code == 200
     assert usage_response.json()["plan_code"] == "starter"
+
+
+def test_netopia_mock_checkout_and_webhook_activates_plan():
+    _, token = register_user("netopia-owner")
+
+    org_response = client.post(
+        "/organizations",
+        json={"name": "Netopia Test SRL", "cui": "RO55119922"},
+        headers=auth_header(token),
+    )
+    assert org_response.status_code == 200
+    org_id = org_response.json()["id"]
+
+    checkout_response = client.post(
+        f"/organizations/{org_id}/billing/netopia-mock/checkout",
+        json={"plan_code": "pro"},
+        headers=auth_header(token),
+    )
+    assert checkout_response.status_code == 200, checkout_response.text
+    checkout = checkout_response.json()
+    assert checkout["status"] == "pending"
+    assert checkout["provider"] == "netopia_mock"
+
+    webhook_response = client.post(
+        "/billing/netopia-mock/webhook",
+        json={
+            "session_id": checkout["provider_session_id"],
+            "status": "paid",
+            "secret": "dev-netopia-webhook-secret",
+        },
+    )
+    assert webhook_response.status_code == 200, webhook_response.text
+    assert webhook_response.json()["status"] == "paid"
+
+    subscription_response = client.get(
+        f"/organizations/{org_id}/subscription",
+        headers=auth_header(token),
+    )
+    assert subscription_response.status_code == 200
+    assert subscription_response.json()["plan_code"] == "pro"

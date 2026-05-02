@@ -123,12 +123,14 @@ export default function Home() {
 
   async function changePlan(planCode: string) {
     if (!active) return;
-    await apiFetch(`/organizations/${active}/subscription`, {
+    const checkout = await apiFetch(`/organizations/${active}/billing/netopia-mock/checkout`, {
       method: "POST",
       body: JSON.stringify({ plan_code: planCode }),
     });
-    setMsg(`Plan schimbat la ${planCode}.`);
-    await loadUsage(active);
+    setMsg(`Checkout creat pentru ${planCode}. Redirecționare către NETOPIA mock...`);
+    if (checkout.checkout_url) {
+      window.location.href = checkout.checkout_url;
+    }
   }
 
   async function downloadDocument(documentId: number, filename: string) {
@@ -379,7 +381,7 @@ export default function Home() {
               <p><b>{plan.monthly_price_eur} EUR/lună</b></p>
               <p>{plan.max_organizations} firme</p>
               <p>{plan.max_invoices_per_month} facturi/lună</p>
-              <button className="btn secondary" onClick={() => changePlan(plan.code)}>Alege {plan.name}</button>
+              <button className="btn secondary" onClick={() => changePlan(plan.code)}>Cumpără {plan.name}</button>
             </div>
           ))}
         </div>

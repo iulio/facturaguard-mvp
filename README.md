@@ -498,3 +498,37 @@ GET  /organizations/{org_id}/usage
 
 This is not connected to a real payment provider yet.
 It prepares the domain model for Stripe, Netopia, SmartBill payments or manual invoicing.
+
+
+---
+
+## v1.7 additions
+
+This version adds a NETOPIA mock payment provider:
+
+- payment transaction table
+- checkout session endpoint
+- mock checkout page
+- mock webhook endpoint
+- automatic plan activation after simulated successful payment
+- transaction listing endpoint
+- audit logs:
+  - `payment.checkout_created`
+  - `payment.succeeded`
+  - `subscription.activated_from_payment`
+- frontend plan purchase now redirects to NETOPIA mock checkout
+- backend tests for checkout + webhook + plan activation
+- payment docs:
+  ```txt
+  docs/payments.md
+  ```
+
+### New endpoints
+
+```txt
+POST /organizations/{org_id}/billing/netopia-mock/checkout
+GET  /organizations/{org_id}/billing/transactions
+POST /billing/netopia-mock/webhook
+```
+
+This is a mock integration. It does not process real money.

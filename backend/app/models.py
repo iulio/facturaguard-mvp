@@ -186,3 +186,20 @@ class OrganizationSubscription(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     organization = relationship("Organization", back_populates="subscription")
+
+
+class PaymentTransaction(Base):
+    __tablename__ = "payment_transactions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    organization_id: Mapped[int] = mapped_column(ForeignKey("organizations.id"), index=True)
+    provider: Mapped[str] = mapped_column(String(80), default="netopia_mock")
+    provider_session_id: Mapped[str] = mapped_column(String(120), unique=True, index=True)
+    plan_code: Mapped[str] = mapped_column(String(50))
+    amount_eur: Mapped[float] = mapped_column(Float)
+    currency: Mapped[str] = mapped_column(String(10), default="EUR")
+    status: Mapped[str] = mapped_column(String(40), default="pending")
+    checkout_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    raw_payload: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    paid_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

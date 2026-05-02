@@ -298,3 +298,28 @@ class UsageOut(BaseModel):
     documents_total: int
     max_invoices_per_month: int
     max_documents: int
+
+
+class CheckoutCreateIn(BaseModel):
+    plan_code: str
+
+class CheckoutSessionOut(BaseModel):
+    id: int
+    organization_id: int
+    provider: str
+    provider_session_id: str
+    plan_code: str
+    amount_eur: float
+    currency: str
+    status: str
+    checkout_url: str | None = None
+    created_at: datetime
+    paid_at: datetime | None = None
+
+    class Config:
+        from_attributes = True
+
+class NetopiaMockWebhookIn(BaseModel):
+    session_id: str
+    status: str
+    secret: str

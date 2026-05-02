@@ -13,11 +13,13 @@ from .jobs import run_status_check, start_scheduler, stop_scheduler
 from .file_storage import read_document_content, store_upload_file
 from .invitation_service import accept_invitation, create_invitation, get_public_invitation
 from .middleware import InMemoryRateLimitMiddleware, RequestTimingMiddleware
-from .models import Alert, AuditLog, Invoice, Organization, OrganizationDocument, OrganizationIntegration, OrganizationInvitation, OrganizationMember, OrganizationSubscription, User
+from .models import Alert, AuditLog, Invoice, Organization, OrganizationDocument, OrganizationIntegration, OrganizationInvitation, OrganizationMember, OrganizationSubscription, PaymentTransaction, User
 from .parsers import parse_csv_upload, parse_xml_upload, parse_zip_upload
 from .schemas import (
     AlertOut,
     AuditLogOut,
+    CheckoutCreateIn,
+    CheckoutSessionOut,
     DashboardSummary,
     InvoiceOut,
     InvitationAcceptIn,
@@ -31,6 +33,7 @@ from .schemas import (
     LoginIn,
     MessageOut,
     MonthlyReport,
+    NetopiaMockWebhookIn,
     PasswordChangeIn,
     PasswordResetConfirmIn,
     PasswordResetRequestIn,
@@ -59,6 +62,7 @@ from .services import (
     explain_anaf_error,
 )
 from .password_service import change_password, create_password_reset_token, reset_password_with_token
+from .payment_service import create_netopia_mock_checkout, process_netopia_mock_webhook
 from .portfolio_service import build_portfolio_summary
 from .report_service import generate_invoices_csv, generate_monthly_report_pdf
 from .sync_service import (
@@ -577,6 +581,62 @@ async def upload_invoices(
     return created
 
 
+
+
+@app.post("/organizations/{org_id}/billing/netopia-mock/checkout", response_model=CheckoutSessionOut)
+def create_netopia_mock_checkout_session(
+    org_id: int,
+    payload: CheckoutCreateIn,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    organization = get_accessible_organization(db, org_id, current_user, require_owner=True)
+
+    try:
+        transaction = create_netopia_mock_checkout(db, organization, payload.plan_code, current_user)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except RuntimeError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    db.commit()
+    db.refresh(transaction)
+    return transaction
+
+@app.get("/organizations/{org_id}/billing/transactions", response_model=list[CheckoutSessionOut])
+def list_payment_transactions(
+    org_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    get_accessible_organization(db, org_id, current_user, require_owner=True)
+    return (
+        db.query(PaymentTransaction)
+        .filter(PaymentTransaction.organization_id == org_id)
+        .order_by(PaymentTransaction.created_at.desc())
+        .all()
+    )
+
+@app.post("/billing/netopia-mock/webhook", response_model=CheckoutSessionOut)
+def netopia_mock_webhook(
+    payload: NetopiaMockWebhookIn,
+    db: Session = Depends(get_db),
+):
+    try:
+        transaction = process_netopia_mock_webhook(
+            db,
+            session_id=payload.session_id,
+            status=payload.status,
+            secret=payload.secret,
+        )
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    db.commit()
+    db.refresh(transaction)
+    return transaction
 
 @app.get("/organizations/{org_id}/subscription", response_model=SubscriptionOut)
 def get_organization_subscription(
