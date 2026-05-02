@@ -9,7 +9,7 @@ from .auth import create_access_token, get_current_user, hash_password, verify_p
 from sqlalchemy import text
 from .database import Base, engine, get_db
 from .jobs import run_status_check, start_scheduler, stop_scheduler
-from .file_storage import resolve_document_path, store_upload_file
+from .file_storage import read_document_content, store_upload_file
 from .invitation_service import accept_invitation, create_invitation, get_public_invitation
 from .middleware import InMemoryRateLimitMiddleware, RequestTimingMiddleware
 from .models import Alert, AuditLog, Invoice, Organization, OrganizationDocument, OrganizationIntegration, OrganizationInvitation, OrganizationMember, User
@@ -763,12 +763,9 @@ def download_organization_document(
         raise HTTPException(status_code=404, detail="Documentul nu a fost găsit.")
 
     try:
-        path = resolve_document_path(document)
+        content = read_document_content(document)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
-
-    with open(path, "rb") as f:
-        content = f.read()
 
     write_audit_log(
         db,

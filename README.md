@@ -425,3 +425,39 @@ FILE_STORAGE_PATH=./storage
 ```
 
 For production, replace local storage with S3-compatible object storage.
+
+
+---
+
+## v1.5 additions
+
+This version introduces a storage abstraction:
+
+- `StorageBackend` interface
+- `LocalStorageBackend`
+- `S3StorageBackend`
+- S3-compatible storage support via `boto3`
+- configurable storage backend:
+  ```txt
+  FILE_STORAGE_BACKEND=local
+  ```
+  or:
+  ```txt
+  FILE_STORAGE_BACKEND=s3
+  ```
+- storage documentation:
+  ```txt
+  docs/storage.md
+  ```
+
+### S3-compatible environment variables
+
+```txt
+S3_ENDPOINT_URL=
+S3_REGION_NAME=eu-central-1
+S3_BUCKET_NAME=
+S3_ACCESS_KEY_ID=
+S3_SECRET_ACCESS_KEY=
+```
+
+Local storage remains the default for development.

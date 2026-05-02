@@ -33,7 +33,14 @@ class Settings(BaseSettings):
     rate_limit_enabled: bool = Field(default=True, alias="RATE_LIMIT_ENABLED")
     rate_limit_per_minute: int = Field(default=120, alias="RATE_LIMIT_PER_MINUTE")
 
+    file_storage_backend: str = Field(default="local", alias="FILE_STORAGE_BACKEND")
     file_storage_path: str = Field(default="./storage", alias="FILE_STORAGE_PATH")
+
+    s3_endpoint_url: str | None = Field(default=None, alias="S3_ENDPOINT_URL")
+    s3_region_name: str = Field(default="eu-central-1", alias="S3_REGION_NAME")
+    s3_bucket_name: str | None = Field(default=None, alias="S3_BUCKET_NAME")
+    s3_access_key_id: str | None = Field(default=None, alias="S3_ACCESS_KEY_ID")
+    s3_secret_access_key: str | None = Field(default=None, alias="S3_SECRET_ACCESS_KEY")
 
     model_config = SettingsConfigDict(
         env_file=".env",

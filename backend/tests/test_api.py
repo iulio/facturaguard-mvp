@@ -357,3 +357,11 @@ def test_uploaded_document_is_stored_and_downloadable():
     )
     assert download_response.status_code == 200
     assert b"DOC-1" in download_response.content
+
+
+def test_s3_uri_parser():
+    from app.file_storage import parse_s3_uri
+
+    bucket, key = parse_s3_uri("s3://my-bucket/organizations/1/file.xml")
+    assert bucket == "my-bucket"
+    assert key == "organizations/1/file.xml"
