@@ -11,6 +11,7 @@ class UserOut(BaseModel):
     name: str
     email: EmailStr
     role: str
+
     class Config:
         from_attributes = True
 
@@ -32,6 +33,22 @@ class OrganizationOut(BaseModel):
     name: str
     cui: str
     address: str | None = None
+
+    class Config:
+        from_attributes = True
+
+class OrganizationMemberCreate(BaseModel):
+    email: EmailStr
+    role: str = "client_viewer"
+
+class OrganizationMemberOut(BaseModel):
+    id: int
+    organization_id: int
+    user_id: int
+    role: str
+    status: str
+    created_at: datetime
+
     class Config:
         from_attributes = True
 
@@ -51,6 +68,7 @@ class InvoiceOut(BaseModel):
     anaf_message: str | None = None
     plain_explanation: str | None = None
     created_at: datetime
+
     class Config:
         from_attributes = True
 
@@ -66,6 +84,20 @@ class AlertOut(BaseModel):
     sent_email: bool
     created_at: datetime
     resolved_at: datetime | None = None
+
+    class Config:
+        from_attributes = True
+
+class AuditLogOut(BaseModel):
+    id: int
+    organization_id: int
+    actor_user_id: int | None
+    action: str
+    entity_type: str | None
+    entity_id: str | None
+    message: str
+    created_at: datetime
+
     class Config:
         from_attributes = True
 

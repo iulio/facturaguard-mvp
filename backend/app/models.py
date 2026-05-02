@@ -5,6 +5,7 @@ from .database import Base
 
 class User(Base):
     __tablename__ = "users"
+
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     name: Mapped[str] = mapped_column(String(120))
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
@@ -12,22 +13,42 @@ class User(Base):
     role: Mapped[str] = mapped_column(String(50), default="accountant")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
     organizations = relationship("Organization", back_populates="owner")
+    memberships = relationship("OrganizationMember", back_populates="user", cascade="all, delete-orphan")
 
 class Organization(Base):
     __tablename__ = "organizations"
+
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     owner_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     name: Mapped[str] = mapped_column(String(200))
     cui: Mapped[str] = mapped_column(String(50), index=True)
     address: Mapped[str | None] = mapped_column(String(255), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
     owner = relationship("User", back_populates="organizations")
     invoices = relationship("Invoice", back_populates="organization", cascade="all, delete-orphan")
     alerts = relationship("Alert", back_populates="organization", cascade="all, delete-orphan")
+    members = relationship("OrganizationMember", back_populates="organization", cascade="all, delete-orphan")
+    audit_logs = relationship("AuditLog", back_populates="organization", cascade="all, delete-orphan")
+
+class OrganizationMember(Base):
+    __tablename__ = "organization_members"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    organization_id: Mapped[int] = mapped_column(ForeignKey("organizations.id"), index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    role: Mapped[str] = mapped_column(String(50), default="client_viewer")
+    status: Mapped[str] = mapped_column(String(30), default="active")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    organization = relationship("Organization", back_populates="members")
+    user = relationship("User", back_populates="memberships")
 
 class Invoice(Base):
     __tablename__ = "invoices"
+
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     organization_id: Mapped[int] = mapped_column(ForeignKey("organizations.id"))
     invoice_number: Mapped[str] = mapped_column(String(100), index=True)
@@ -44,11 +65,13 @@ class Invoice(Base):
     plain_explanation: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
     organization = relationship("Organization", back_populates="invoices")
     alerts = relationship("Alert", back_populates="invoice", cascade="all, delete-orphan")
 
 class Alert(Base):
     __tablename__ = "alerts"
+
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     organization_id: Mapped[int] = mapped_column(ForeignKey("organizations.id"))
     invoice_id: Mapped[int | None] = mapped_column(ForeignKey("invoices.id"), nullable=True)
@@ -60,5 +83,20 @@ class Alert(Base):
     sent_email: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
     organization = relationship("Organization", back_populates="alerts")
     invoice = relationship("Invoice", back_populates="alerts")
+
+class AuditLog(Base):
+    __tablename__ = "audit_logs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    organization_id: Mapped[int] = mapped_column(ForeignKey("organizations.id"), index=True)
+    actor_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    action: Mapped[str] = mapped_column(String(120), index=True)
+    entity_type: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    entity_id: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    message: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    organization = relationship("Organization", back_populates="audit_logs")

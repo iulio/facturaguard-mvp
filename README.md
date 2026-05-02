@@ -16,6 +16,9 @@ B2B SaaS MVP pentru monitorizarea conformării RO e-Factura.
 - Next.js frontend
 - Docker Compose
 - GitHub Actions CI
+- basic role/membership layer
+- audit log
+- backend API tests
 
 ## Local backend
 
@@ -63,3 +66,44 @@ backend/samples/invoice.xml
 backend/samples/ubl_invoice.xml
 backend/samples/xml_batch.zip
 ```
+
+
+---
+
+## v0.5 additions
+
+This version adds:
+
+- `organization_members` table
+- `audit_logs` table
+- organization-level access helper
+- mock invite endpoint for existing users
+- audit log endpoint
+- audit events for organization creation, invoice upload, alert resolution and status checks
+- backend tests with `pytest`
+
+### Run backend tests
+
+```bash
+cd backend
+pip install -r requirements.txt
+pytest
+```
+
+### New endpoints
+
+```txt
+POST /organizations/{org_id}/members
+GET  /organizations/{org_id}/audit-logs
+```
+
+`POST /organizations/{org_id}/members` expects:
+
+```json
+{
+  "email": "client@example.com",
+  "role": "client_viewer"
+}
+```
+
+For this MVP, the user must already exist.

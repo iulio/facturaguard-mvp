@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: ["main", "develop"]
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   backend:
     name: Backend FastAPI
@@ -31,6 +34,9 @@ jobs:
           from app.main import app
           print(app.title)
           PY
+
+      - name: Run backend tests
+        run: pytest -q
 
   frontend:
     name: Frontend Next.js
