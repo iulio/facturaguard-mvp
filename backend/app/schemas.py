@@ -159,3 +159,26 @@ class BulkInvoiceSyncResult(BaseModel):
     checked: int
     changed: int
     results: list[InvoiceSyncResult]
+
+
+class PortfolioOrganizationSummary(BaseModel):
+    organization_id: int
+    name: str
+    cui: str
+    total_invoices: int
+    validated: int
+    rejected: int
+    unsent: int
+    near_deadline: int
+    overdue: int
+    open_alerts: int
+    risk_score: int
+    risk_label: str
+
+class PortfolioSummary(BaseModel):
+    total_organizations: int
+    high_risk: int
+    medium_risk: int
+    low_risk: int
+    total_open_alerts: int
+    organizations: list[PortfolioOrganizationSummary]

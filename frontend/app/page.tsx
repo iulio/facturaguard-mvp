@@ -15,15 +15,26 @@ export default function Home() {
   const [summary, setSummary] = useState<any>(null);
   const [invoices, setInvoices] = useState<any[]>([]);
   const [alerts, setAlerts] = useState<any[]>([]);
+  const [portfolio, setPortfolio] = useState<any>(null);
+  const [portfolioSearch, setPortfolioSearch] = useState("");
+  const [riskFilter, setRiskFilter] = useState("");
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
 
   useEffect(() => { setAuthed(Boolean(getToken())); setReady(true); }, []);
-  useEffect(() => { if (authed) loadOrganizations(); }, [authed]);
+  useEffect(() => { if (authed) { loadOrganizations(); loadPortfolio(); } }, [authed]);
   useEffect(() => { if (active) refresh(active); }, [active]);
 
   async function refresh(id: number) {
-    await Promise.all([loadDashboard(id), loadInvoices(id), loadAlerts(id)]);
+    await Promise.all([loadDashboard(id), loadInvoices(id), loadAlerts(id), loadPortfolio()]);
+  }
+
+  async function loadPortfolio() {
+    const params = new URLSearchParams();
+    if (portfolioSearch) params.set("search", portfolioSearch);
+    if (riskFilter) params.set("risk", riskFilter);
+    const suffix = params.toString() ? `?${params.toString()}` : "";
+    setPortfolio(await apiFetch(`/portfolio${suffix}`));
   }
 
   async function submitAuth(e: React.FormEvent) {
@@ -101,7 +112,7 @@ export default function Home() {
     URL.revokeObjectURL(url);
   }
 
-  function logout() { clearToken(); setAuthed(false); setOrgs([]); setInvoices([]); setAlerts([]); setSummary(null); setActive(null); }
+  function logout() { clearToken(); setAuthed(false); setOrgs([]); setInvoices([]); setAlerts([]); setSummary(null); setPortfolio(null); setActive(null); }
 
   if (!ready) return null;
 
@@ -136,6 +147,63 @@ export default function Home() {
 
       {err && <p className="error">{err}</p>}
       {msg && <p className="success">{msg}</p>}
+
+
+      <section className="card" style={{ marginBottom: 18 }}>
+        <div className="header">
+          <div>
+            <h2>Portofoliu contabil</h2>
+            <p>Vedere multi-firmă cu risc, alerte și status facturi.</p>
+          </div>
+          <button className="btn secondary" onClick={loadPortfolio}>Aplică filtre</button>
+        </div>
+
+        <div className="grid grid-2" style={{ marginBottom: 18 }}>
+          <input className="input" placeholder="Caută firmă sau CUI..." value={portfolioSearch} onChange={(e) => setPortfolioSearch(e.target.value)} />
+          <select className="input" value={riskFilter} onChange={(e) => setRiskFilter(e.target.value)}>
+            <option value="">Toate riscurile</option>
+            <option value="high">Risc mare</option>
+            <option value="medium">Risc mediu</option>
+            <option value="low">Risc mic</option>
+          </select>
+        </div>
+
+        <section className="grid grid-4">
+          <Metric icon={<FileText />} label="Firme" value={portfolio?.total_organizations ?? 0} />
+          <Metric icon={<AlertTriangle />} label="Risc mare" value={portfolio?.high_risk ?? 0} />
+          <Metric icon={<BellRing />} label="Alerte" value={portfolio?.total_open_alerts ?? 0} />
+          <Metric icon={<CheckCircle2 />} label="Risc mic" value={portfolio?.low_risk ?? 0} />
+        </section>
+
+        <div style={{ marginTop: 18, overflowX: "auto" }}>
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Firmă</th>
+                <th>CUI</th>
+                <th>Facturi</th>
+                <th>Validate</th>
+                <th>Probleme</th>
+                <th>Alerte</th>
+                <th>Risc</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(portfolio?.organizations ?? []).map((org: any) => (
+                <tr key={org.organization_id} onClick={() => setActive(org.organization_id)} style={{ cursor: "pointer" }}>
+                  <td><b>{org.name}</b></td>
+                  <td>{org.cui}</td>
+                  <td>{org.total_invoices}</td>
+                  <td>{org.validated}</td>
+                  <td>{org.rejected + org.unsent + org.near_deadline + org.overdue}</td>
+                  <td>{org.open_alerts}</td>
+                  <td><span className={`badge ${org.risk_label === "high" ? "high" : org.risk_label === "medium" ? "medium" : "validated"}`}>{org.risk_label} · {org.risk_score}</span></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
 
       <section className="grid grid-2">
         <div className="card">

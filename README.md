@@ -222,3 +222,35 @@ The PDF report includes:
 - top recurring errors
 - recommendations
 - problematic invoices table
+
+
+---
+
+## v0.9 additions
+
+This version improves the accountant-facing dashboard:
+
+- portfolio endpoint for all accessible organizations
+- risk score per company
+- risk labels: `high`, `medium`, `low`
+- search by company name/CUI
+- filter by risk level
+- frontend portfolio table
+- click a company row to select it in the operational dashboard
+
+### New endpoint
+
+```txt
+GET /portfolio
+GET /portfolio?risk=high
+GET /portfolio?search=construct
+```
+
+The risk score is based on:
+
+- rejected invoices
+- overdue invoices
+- near-deadline invoices
+- unsent invoices
+- open alerts
+- issue ratio relative to total invoices

@@ -18,6 +18,7 @@ from .schemas import (
     InvoiceOut,
     LoginIn,
     MonthlyReport,
+    PortfolioSummary,
     OrganizationCreate,
     OrganizationMemberCreate,
     OrganizationMemberOut,
@@ -36,6 +37,7 @@ from .services import (
     create_alert_for_invoice,
     explain_anaf_error,
 )
+from .portfolio_service import build_portfolio_summary
 from .report_service import generate_invoices_csv, generate_monthly_report_pdf
 from .sync_service import (
     get_or_create_anaf_integration,
@@ -96,6 +98,20 @@ def login(payload: LoginIn, db: Session = Depends(get_db)):
 @app.get("/auth/me", response_model=UserOut)
 def me(current_user: User = Depends(get_current_user)):
     return current_user
+
+
+@app.get("/portfolio", response_model=PortfolioSummary)
+def portfolio_dashboard(
+    risk: str | None = None,
+    search: str | None = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    allowed_risks = {None, "high", "medium", "low"}
+    if risk not in allowed_risks:
+        raise HTTPException(status_code=400, detail="Risk must be one of: high, medium, low.")
+
+    return build_portfolio_summary(db, current_user, risk=risk, search=search)
 
 @app.post("/organizations", response_model=OrganizationOut)
 def create_organization(

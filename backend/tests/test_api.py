@@ -146,3 +146,33 @@ def test_report_pdf_and_csv_exports():
     assert pdf_response.status_code == 200
     assert pdf_response.headers["content-type"] == "application/pdf"
     assert pdf_response.content.startswith(b"%PDF")
+
+
+def test_portfolio_dashboard_summary():
+    _, token = register_user("portfolio-owner")
+
+    org_a = client.post(
+        "/organizations",
+        json={"name": "Portfolio A SRL", "cui": "RO90000001"},
+        headers=auth_header(token),
+    )
+    assert org_a.status_code == 200
+
+    org_b = client.post(
+        "/organizations",
+        json={"name": "Portfolio B SRL", "cui": "RO90000002"},
+        headers=auth_header(token),
+    )
+    assert org_b.status_code == 200
+
+    portfolio_response = client.get("/portfolio", headers=auth_header(token))
+    assert portfolio_response.status_code == 200
+    payload = portfolio_response.json()
+    assert payload["total_organizations"] >= 2
+    assert "organizations" in payload
+    assert any(item["name"] == "Portfolio A SRL" for item in payload["organizations"])
+
+    search_response = client.get("/portfolio?search=Portfolio A", headers=auth_header(token))
+    assert search_response.status_code == 200
+    search_payload = search_response.json()
+    assert all("Portfolio A" in item["name"] for item in search_payload["organizations"])
