@@ -21,6 +21,7 @@ export default function Home() {
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("client_viewer");
   const [invitations, setInvitations] = useState<any[]>([]);
+  const [documents, setDocuments] = useState<any[]>([]);
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
   const [resetEmail, setResetEmail] = useState("");
@@ -30,7 +31,7 @@ export default function Home() {
   useEffect(() => { if (active) refresh(active); }, [active]);
 
   async function refresh(id: number) {
-    await Promise.all([loadDashboard(id), loadInvoices(id), loadAlerts(id), loadPortfolio(), loadInvitations(id)]);
+    await Promise.all([loadDashboard(id), loadInvoices(id), loadAlerts(id), loadPortfolio(), loadInvitations(id), loadDocuments(id)]);
   }
 
   async function loadPortfolio() {
@@ -92,6 +93,34 @@ export default function Home() {
     } catch {
       setInvitations([]);
     }
+  }
+
+  async function loadDocuments(id: number) {
+    try {
+      setDocuments(await apiFetch(`/organizations/${id}/documents`));
+    } catch {
+      setDocuments([]);
+    }
+  }
+
+  async function downloadDocument(documentId: number, filename: string) {
+    if (!active) return;
+    const token = getToken();
+    const base = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
+    const response = await fetch(`${base}/organizations/${active}/documents/${documentId}/download`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!response.ok) {
+      setErr("Documentul nu a putut fi descărcat.");
+      return;
+    }
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(url);
   }
 
   async function sendInvitation() {
@@ -303,6 +332,33 @@ export default function Home() {
                 </tr>
               ))}
               {invitations.length === 0 && <tr><td colSpan={4}>Nu există invitații.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className="card" style={{ marginTop: 18 }}>
+        <div className="header">
+          <div>
+            <h2>Documente stocate</h2>
+            <p>Fișiere originale păstrate pentru audit: CSV, XML sau ZIP.</p>
+          </div>
+          <button className="btn secondary" onClick={() => active && loadDocuments(active)}>Reîncarcă</button>
+        </div>
+        <div style={{ overflowX: "auto" }}>
+          <table className="table">
+            <thead><tr><th>Fișier</th><th>Tip</th><th>Mărime</th><th>Data</th><th>Acțiune</th></tr></thead>
+            <tbody>
+              {documents.map((doc) => (
+                <tr key={doc.id}>
+                  <td>{doc.original_filename}</td>
+                  <td>{doc.document_type}</td>
+                  <td>{doc.file_size} bytes</td>
+                  <td>{new Date(doc.created_at).toLocaleString()}</td>
+                  <td><button className="btn secondary" onClick={() => downloadDocument(doc.id, doc.original_filename)}>Download</button></td>
+                </tr>
+              ))}
+              {documents.length === 0 && <tr><td colSpan={5}>Nu există documente stocate.</td></tr>}
             </tbody>
           </table>
         </div>

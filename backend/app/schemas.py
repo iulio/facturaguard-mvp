@@ -246,3 +246,19 @@ class PasswordChangeIn(BaseModel):
 
 class MessageOut(BaseModel):
     message: str
+
+
+class OrganizationDocumentOut(BaseModel):
+    id: int
+    organization_id: int
+    uploaded_by_user_id: int | None
+    original_filename: str
+    stored_filename: str
+    content_type: str | None
+    file_size: int
+    document_type: str
+    status: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True

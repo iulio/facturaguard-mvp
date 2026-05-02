@@ -322,3 +322,38 @@ def test_password_reset_and_change_flow():
         json={"email": email, "password": "FinalPassword123!"},
     )
     assert final_login.status_code == 200
+
+
+def test_uploaded_document_is_stored_and_downloadable():
+    _, token = register_user("document-owner")
+
+    org_response = client.post(
+        "/organizations",
+        json={"name": "Document Test SRL", "cui": "RO44112233"},
+        headers=auth_header(token),
+    )
+    assert org_response.status_code == 200
+    org_id = org_response.json()["id"]
+
+    upload_response = client.post(
+        f"/organizations/{org_id}/invoices/upload",
+        files={"file": ("doc-test.csv", "invoice_number,issue_date,customer_name,customer_cui,total_amount,anaf_status\nDOC-1,2026-04-27,Client,RO1,100,validated\n", "text/csv")},
+        headers=auth_header(token),
+    )
+    assert upload_response.status_code == 200, upload_response.text
+
+    documents_response = client.get(
+        f"/organizations/{org_id}/documents",
+        headers=auth_header(token),
+    )
+    assert documents_response.status_code == 200
+    documents = documents_response.json()
+    assert len(documents) >= 1
+    document_id = documents[0]["id"]
+
+    download_response = client.get(
+        f"/organizations/{org_id}/documents/{document_id}/download",
+        headers=auth_header(token),
+    )
+    assert download_response.status_code == 200
+    assert b"DOC-1" in download_response.content

@@ -9,9 +9,10 @@ from .auth import create_access_token, get_current_user, hash_password, verify_p
 from sqlalchemy import text
 from .database import Base, engine, get_db
 from .jobs import run_status_check, start_scheduler, stop_scheduler
+from .file_storage import resolve_document_path, store_upload_file
 from .invitation_service import accept_invitation, create_invitation, get_public_invitation
 from .middleware import InMemoryRateLimitMiddleware, RequestTimingMiddleware
-from .models import Alert, AuditLog, Invoice, Organization, OrganizationIntegration, OrganizationInvitation, OrganizationMember, User
+from .models import Alert, AuditLog, Invoice, Organization, OrganizationDocument, OrganizationIntegration, OrganizationInvitation, OrganizationMember, User
 from .parsers import parse_csv_upload, parse_xml_upload, parse_zip_upload
 from .schemas import (
     AlertOut,
@@ -34,6 +35,7 @@ from .schemas import (
     PortfolioSummary,
     OrganizationCreate,
     OrganizationMemberCreate,
+    OrganizationDocumentOut,
     OrganizationMemberOut,
     OrganizationOut,
     IntegrationOut,
@@ -481,6 +483,15 @@ async def upload_invoices(
     content = await file.read()
     filename = file.filename.lower()
 
+    document = store_upload_file(
+        db,
+        organization=organization,
+        upload_file=file,
+        content=content,
+        actor=current_user,
+        document_type="invoice_import",
+    )
+
     try:
         if filename.endswith(".csv"):
             parsed = parse_csv_upload(content)
@@ -530,7 +541,7 @@ async def upload_invoices(
         actor_user_id=current_user.id,
         action="invoices.uploaded",
         entity_type="invoice_batch",
-        message=f"Au fost importate {len(created)} facturi din fișierul {file.filename}.",
+        message=f"Au fost importate {len(created)} facturi din fișierul {file.filename}. Document ID: {document.id}.",
     )
 
     db.commit()
@@ -715,6 +726,65 @@ def export_invoices_csv(
         content=csv_content,
         media_type="text/csv; charset=utf-8",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@app.get("/organizations/{org_id}/documents", response_model=list[OrganizationDocumentOut])
+def list_organization_documents(
+    org_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    get_accessible_organization(db, org_id, current_user)
+    return (
+        db.query(OrganizationDocument)
+        .filter(OrganizationDocument.organization_id == org_id)
+        .order_by(OrganizationDocument.created_at.desc())
+        .all()
+    )
+
+@app.get("/organizations/{org_id}/documents/{document_id}/download")
+def download_organization_document(
+    org_id: int,
+    document_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    get_accessible_organization(db, org_id, current_user)
+    document = (
+        db.query(OrganizationDocument)
+        .filter(
+            OrganizationDocument.id == document_id,
+            OrganizationDocument.organization_id == org_id,
+        )
+        .first()
+    )
+    if not document:
+        raise HTTPException(status_code=404, detail="Documentul nu a fost găsit.")
+
+    try:
+        path = resolve_document_path(document)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+    with open(path, "rb") as f:
+        content = f.read()
+
+    write_audit_log(
+        db,
+        organization_id=org_id,
+        actor_user_id=current_user.id,
+        action="document.downloaded",
+        entity_type="organization_document",
+        entity_id=document.id,
+        message=f"Documentul {document.original_filename} a fost descărcat.",
+    )
+    db.commit()
+
+    return Response(
+        content=content,
+        media_type=document.content_type or "application/octet-stream",
+        headers={"Content-Disposition": f'attachment; filename="{document.original_filename}"'},
     )
 
 @app.get("/organizations/{org_id}/audit-logs", response_model=list[AuditLogOut])

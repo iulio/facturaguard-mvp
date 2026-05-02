@@ -386,3 +386,42 @@ POST /auth/password-reset/request
 POST /auth/password-reset/confirm
 POST /auth/password-change
 ```
+
+
+---
+
+## v1.4 additions
+
+This version adds original file storage for audit and compliance:
+
+- local file storage service
+- `organization_documents` table
+- stores uploaded CSV/XML/ZIP files
+- document metadata:
+  - original filename
+  - stored filename
+  - content type
+  - file size
+  - uploaded user
+- secure document listing by organization access
+- secure document download endpoint
+- audit logs:
+  - `document.stored`
+  - `document.downloaded`
+- Docker volume for file storage
+- frontend document table and download action
+
+### New endpoints
+
+```txt
+GET /organizations/{org_id}/documents
+GET /organizations/{org_id}/documents/{document_id}/download
+```
+
+### Storage setting
+
+```txt
+FILE_STORAGE_PATH=./storage
+```
+
+For production, replace local storage with S3-compatible object storage.
