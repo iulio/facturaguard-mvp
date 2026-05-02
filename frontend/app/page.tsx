@@ -22,16 +22,18 @@ export default function Home() {
   const [inviteRole, setInviteRole] = useState("client_viewer");
   const [invitations, setInvitations] = useState<any[]>([]);
   const [documents, setDocuments] = useState<any[]>([]);
+  const [plans, setPlans] = useState<any[]>([]);
+  const [usage, setUsage] = useState<any>(null);
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
   const [resetEmail, setResetEmail] = useState("");
 
   useEffect(() => { setAuthed(Boolean(getToken())); setReady(true); }, []);
-  useEffect(() => { if (authed) { loadOrganizations(); loadPortfolio(); } }, [authed]);
+  useEffect(() => { if (authed) { loadOrganizations(); loadPortfolio(); loadPlans(); } }, [authed]);
   useEffect(() => { if (active) refresh(active); }, [active]);
 
   async function refresh(id: number) {
-    await Promise.all([loadDashboard(id), loadInvoices(id), loadAlerts(id), loadPortfolio(), loadInvitations(id), loadDocuments(id)]);
+    await Promise.all([loadDashboard(id), loadInvoices(id), loadAlerts(id), loadPortfolio(), loadInvitations(id), loadDocuments(id), loadUsage(id)]);
   }
 
   async function loadPortfolio() {
@@ -101,6 +103,32 @@ export default function Home() {
     } catch {
       setDocuments([]);
     }
+  }
+
+  async function loadPlans() {
+    try {
+      setPlans(await apiFetch(`/billing/plans`));
+    } catch {
+      setPlans([]);
+    }
+  }
+
+  async function loadUsage(id: number) {
+    try {
+      setUsage(await apiFetch(`/organizations/${id}/usage`));
+    } catch {
+      setUsage(null);
+    }
+  }
+
+  async function changePlan(planCode: string) {
+    if (!active) return;
+    await apiFetch(`/organizations/${active}/subscription`, {
+      method: "POST",
+      body: JSON.stringify({ plan_code: planCode }),
+    });
+    setMsg(`Plan schimbat la ${planCode}.`);
+    await loadUsage(active);
   }
 
   async function downloadDocument(documentId: number, filename: string) {
@@ -334,6 +362,26 @@ export default function Home() {
               {invitations.length === 0 && <tr><td colSpan={4}>Nu există invitații.</td></tr>}
             </tbody>
           </table>
+        </div>
+      </section>
+
+      <section className="card" style={{ marginTop: 18 }}>
+        <div className="header">
+          <div>
+            <h2>Billing & usage</h2>
+            <p>Plan curent: <b>{usage?.plan_code ?? "free"}</b>. Facturi luna curentă: {usage?.invoices_this_month ?? 0}/{usage?.max_invoices_per_month ?? "-"} · Documente: {usage?.documents_total ?? 0}/{usage?.max_documents ?? "-"}</p>
+          </div>
+        </div>
+        <div className="grid grid-4">
+          {plans.map((plan) => (
+            <div className="card" key={plan.code} style={{ boxShadow: "none" }}>
+              <h3>{plan.name}</h3>
+              <p><b>{plan.monthly_price_eur} EUR/lună</b></p>
+              <p>{plan.max_organizations} firme</p>
+              <p>{plan.max_invoices_per_month} facturi/lună</p>
+              <button className="btn secondary" onClick={() => changePlan(plan.code)}>Alege {plan.name}</button>
+            </div>
+          ))}
         </div>
       </section>
 

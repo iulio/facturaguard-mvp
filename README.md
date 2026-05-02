@@ -461,3 +461,40 @@ S3_SECRET_ACCESS_KEY=
 ```
 
 Local storage remains the default for development.
+
+
+---
+
+## v1.6 additions
+
+This version adds a SaaS billing/subscription skeleton:
+
+- static pricing plans:
+  - `free`
+  - `starter`
+  - `pro`
+  - `agency`
+- `organization_subscriptions` table
+- organization subscription endpoint
+- organization usage endpoint
+- plan limits for:
+  - max organizations
+  - invoices per month
+  - stored documents
+- audit log for subscription updates
+- frontend billing/usage panel
+- backend tests for plans, subscription and usage
+
+### New endpoints
+
+```txt
+GET  /billing/plans
+GET  /organizations/{org_id}/subscription
+POST /organizations/{org_id}/subscription
+GET  /organizations/{org_id}/usage
+```
+
+### Notes
+
+This is not connected to a real payment provider yet.
+It prepares the domain model for Stripe, Netopia, SmartBill payments or manual invoicing.

@@ -262,3 +262,39 @@ class OrganizationDocumentOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class PlanOut(BaseModel):
+    code: str
+    name: str
+    monthly_price_eur: float
+    max_organizations: int
+    max_invoices_per_month: int
+    max_documents: int
+    features: list[str]
+
+class SubscriptionOut(BaseModel):
+    id: int
+    organization_id: int
+    plan_code: str
+    status: str
+    billing_provider: str | None = None
+    billing_customer_id: str | None = None
+    billing_subscription_id: str | None = None
+    current_period_end: datetime | None = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class SubscriptionUpdateIn(BaseModel):
+    plan_code: str
+
+class UsageOut(BaseModel):
+    organization_id: int
+    plan_code: str
+    invoices_this_month: int
+    documents_total: int
+    max_invoices_per_month: int
+    max_documents: int

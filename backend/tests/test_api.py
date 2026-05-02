@@ -365,3 +365,41 @@ def test_s3_uri_parser():
     bucket, key = parse_s3_uri("s3://my-bucket/organizations/1/file.xml")
     assert bucket == "my-bucket"
     assert key == "organizations/1/file.xml"
+
+
+def test_billing_plans_subscription_and_usage():
+    _, token = register_user("billing-owner")
+
+    plans_response = client.get("/billing/plans")
+    assert plans_response.status_code == 200
+    assert any(plan["code"] == "free" for plan in plans_response.json())
+
+    org_response = client.post(
+        "/organizations",
+        json={"name": "Billing Test SRL", "cui": "RO88001122"},
+        headers=auth_header(token),
+    )
+    assert org_response.status_code == 200
+    org_id = org_response.json()["id"]
+
+    subscription_response = client.get(
+        f"/organizations/{org_id}/subscription",
+        headers=auth_header(token),
+    )
+    assert subscription_response.status_code == 200
+    assert subscription_response.json()["plan_code"] == "free"
+
+    update_response = client.post(
+        f"/organizations/{org_id}/subscription",
+        json={"plan_code": "starter"},
+        headers=auth_header(token),
+    )
+    assert update_response.status_code == 200, update_response.text
+    assert update_response.json()["plan_code"] == "starter"
+
+    usage_response = client.get(
+        f"/organizations/{org_id}/usage",
+        headers=auth_header(token),
+    )
+    assert usage_response.status_code == 200
+    assert usage_response.json()["plan_code"] == "starter"

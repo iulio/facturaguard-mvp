@@ -35,6 +35,7 @@ class Organization(Base):
     integrations = relationship("OrganizationIntegration", back_populates="organization", cascade="all, delete-orphan")
     invitations = relationship("OrganizationInvitation", back_populates="organization", cascade="all, delete-orphan")
     documents = relationship("OrganizationDocument", back_populates="organization", cascade="all, delete-orphan")
+    subscription = relationship("OrganizationSubscription", back_populates="organization", uselist=False, cascade="all, delete-orphan")
 
 class OrganizationMember(Base):
     __tablename__ = "organization_members"
@@ -168,3 +169,20 @@ class OrganizationDocument(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     organization = relationship("Organization", back_populates="documents")
+
+
+class OrganizationSubscription(Base):
+    __tablename__ = "organization_subscriptions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    organization_id: Mapped[int] = mapped_column(ForeignKey("organizations.id"), unique=True, index=True)
+    plan_code: Mapped[str] = mapped_column(String(50), default="free")
+    status: Mapped[str] = mapped_column(String(40), default="active")
+    billing_provider: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    billing_customer_id: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    billing_subscription_id: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    current_period_end: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    organization = relationship("Organization", back_populates="subscription")

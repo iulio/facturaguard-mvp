@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
 from .access import get_accessible_organization, write_audit_log
+from .billing import assert_can_create_organization, assert_can_import_invoices, assert_can_store_document, get_or_create_subscription, get_usage, list_plans, update_subscription_plan
 from .auth import create_access_token, get_current_user, hash_password, verify_password
 from sqlalchemy import text
 from .database import Base, engine, get_db
@@ -12,7 +13,7 @@ from .jobs import run_status_check, start_scheduler, stop_scheduler
 from .file_storage import read_document_content, store_upload_file
 from .invitation_service import accept_invitation, create_invitation, get_public_invitation
 from .middleware import InMemoryRateLimitMiddleware, RequestTimingMiddleware
-from .models import Alert, AuditLog, Invoice, Organization, OrganizationDocument, OrganizationIntegration, OrganizationInvitation, OrganizationMember, User
+from .models import Alert, AuditLog, Invoice, Organization, OrganizationDocument, OrganizationIntegration, OrganizationInvitation, OrganizationMember, OrganizationSubscription, User
 from .parsers import parse_csv_upload, parse_xml_upload, parse_zip_upload
 from .schemas import (
     AlertOut,
@@ -25,6 +26,7 @@ from .schemas import (
     InvitationAcceptWithAccountOut,
     InvitationCreate,
     InvitationOut,
+    PlanOut,
     PublicInvitationOut,
     LoginIn,
     MessageOut,
@@ -44,6 +46,9 @@ from .schemas import (
     InvoiceSyncResult,
     TokenOut,
     UserCreate,
+    SubscriptionOut,
+    SubscriptionUpdateIn,
+    UsageOut,
     UserOut,
 )
 from .settings import get_settings
@@ -110,6 +115,11 @@ def ready():
     except Exception as exc:
         return {"status": "not_ready", "database": "error", "detail": str(exc)}
 
+
+
+@app.get("/billing/plans", response_model=list[PlanOut])
+def get_billing_plans():
+    return list_plans()
 
 @app.post("/auth/register", response_model=TokenOut)
 def register(payload: UserCreate, db: Session = Depends(get_db)):
@@ -204,6 +214,11 @@ def create_organization(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    try:
+        assert_can_create_organization(db, current_user)
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc))
+
     org = Organization(
         owner_user_id=current_user.id,
         name=payload.name,
@@ -221,6 +236,7 @@ def create_organization(
             status="active",
         )
     )
+    get_or_create_subscription(db, org)
 
     write_audit_log(
         db,
@@ -483,6 +499,11 @@ async def upload_invoices(
     content = await file.read()
     filename = file.filename.lower()
 
+    try:
+        assert_can_store_document(db, organization)
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc))
+
     document = store_upload_file(
         db,
         organization=organization,
@@ -508,6 +529,11 @@ async def upload_invoices(
         raise HTTPException(status_code=400, detail=str(exc))
     except Exception as exc:
         raise HTTPException(status_code=400, detail=f"Fișier invalid: {exc}")
+
+    try:
+        assert_can_import_invoices(db, organization, len(parsed))
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc))
 
     created = []
     for item in parsed:
@@ -550,6 +576,56 @@ async def upload_invoices(
 
     return created
 
+
+
+@app.get("/organizations/{org_id}/subscription", response_model=SubscriptionOut)
+def get_organization_subscription(
+    org_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    organization = get_accessible_organization(db, org_id, current_user)
+    subscription = get_or_create_subscription(db, organization)
+    db.commit()
+    db.refresh(subscription)
+    return subscription
+
+@app.post("/organizations/{org_id}/subscription", response_model=SubscriptionOut)
+def update_organization_subscription(
+    org_id: int,
+    payload: SubscriptionUpdateIn,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    organization = get_accessible_organization(db, org_id, current_user, require_owner=True)
+
+    try:
+        subscription = update_subscription_plan(db, organization, payload.plan_code)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    write_audit_log(
+        db,
+        organization_id=org_id,
+        actor_user_id=current_user.id,
+        action="subscription.updated",
+        entity_type="organization_subscription",
+        entity_id=subscription.id,
+        message=f"Planul organizației a fost schimbat la {payload.plan_code}.",
+    )
+
+    db.commit()
+    db.refresh(subscription)
+    return subscription
+
+@app.get("/organizations/{org_id}/usage", response_model=UsageOut)
+def get_organization_usage(
+    org_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    organization = get_accessible_organization(db, org_id, current_user)
+    return get_usage(db, organization)
 
 @app.get("/organizations/{org_id}/integrations/anaf", response_model=IntegrationOut)
 def get_anaf_integration(
