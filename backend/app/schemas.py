@@ -182,3 +182,31 @@ class PortfolioSummary(BaseModel):
     low_risk: int
     total_open_alerts: int
     organizations: list[PortfolioOrganizationSummary]
+
+
+class InvitationCreate(BaseModel):
+    email: EmailStr
+    role: str = "client_viewer"
+
+class InvitationOut(BaseModel):
+    id: int
+    organization_id: int
+    invited_email: EmailStr
+    role: str
+    token: str
+    status: str
+    expires_at: datetime
+    accepted_at: datetime | None = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class InvitationAcceptIn(BaseModel):
+    token: str
+
+class InvitationAcceptOut(BaseModel):
+    organization_id: int
+    organization_name: str
+    role: str
+    status: str

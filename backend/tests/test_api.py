@@ -186,3 +186,45 @@ def test_health_and_ready_endpoints():
     ready_response = client.get("/ready")
     assert ready_response.status_code == 200
     assert ready_response.json()["status"] in {"ready", "not_ready"}
+
+
+def test_invitation_flow_existing_user():
+    _, owner_token = register_user("invite-owner")
+    invitee_email, invitee_token = register_user("invitee")
+
+    org_response = client.post(
+        "/organizations",
+        json={"name": "Invite Test SRL", "cui": "RO12399988"},
+        headers=auth_header(owner_token),
+    )
+    assert org_response.status_code == 200
+    org_id = org_response.json()["id"]
+
+    invite_response = client.post(
+        f"/organizations/{org_id}/invitations",
+        json={"email": invitee_email, "role": "client_operator"},
+        headers=auth_header(owner_token),
+    )
+    assert invite_response.status_code == 200, invite_response.text
+    token = invite_response.json()["token"]
+
+    list_response = client.get(
+        f"/organizations/{org_id}/invitations",
+        headers=auth_header(owner_token),
+    )
+    assert list_response.status_code == 200
+    assert any(item["invited_email"] == invitee_email for item in list_response.json())
+
+    accept_response = client.post(
+        "/invitations/accept",
+        json={"token": token},
+        headers=auth_header(invitee_token),
+    )
+    assert accept_response.status_code == 200, accept_response.text
+    assert accept_response.json()["status"] == "accepted"
+
+    dashboard_response = client.get(
+        f"/organizations/{org_id}/dashboard",
+        headers=auth_header(invitee_token),
+    )
+    assert dashboard_response.status_code == 200

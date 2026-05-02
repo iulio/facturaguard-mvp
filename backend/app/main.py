@@ -9,14 +9,19 @@ from .auth import create_access_token, get_current_user, hash_password, verify_p
 from sqlalchemy import text
 from .database import Base, engine, get_db
 from .jobs import run_status_check, start_scheduler, stop_scheduler
+from .invitation_service import accept_invitation, create_invitation
 from .middleware import InMemoryRateLimitMiddleware, RequestTimingMiddleware
-from .models import Alert, AuditLog, Invoice, Organization, OrganizationIntegration, OrganizationMember, User
+from .models import Alert, AuditLog, Invoice, Organization, OrganizationIntegration, OrganizationInvitation, OrganizationMember, User
 from .parsers import parse_csv_upload, parse_xml_upload, parse_zip_upload
 from .schemas import (
     AlertOut,
     AuditLogOut,
     DashboardSummary,
     InvoiceOut,
+    InvitationAcceptIn,
+    InvitationAcceptOut,
+    InvitationCreate,
+    InvitationOut,
     LoginIn,
     MonthlyReport,
     PortfolioSummary,
@@ -194,6 +199,68 @@ def list_organizations(
     if not ids:
         return []
     return db.query(Organization).filter(Organization.id.in_(ids)).all()
+
+
+@app.post("/organizations/{org_id}/invitations", response_model=InvitationOut)
+def invite_organization_member(
+    org_id: int,
+    payload: InvitationCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    organization = get_accessible_organization(db, org_id, current_user, require_owner=True)
+
+    try:
+        invitation = create_invitation(
+            db,
+            organization=organization,
+            invited_email=str(payload.email),
+            role=payload.role,
+            invited_by=current_user,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    db.commit()
+    db.refresh(invitation)
+    return invitation
+
+@app.get("/organizations/{org_id}/invitations", response_model=list[InvitationOut])
+def list_organization_invitations(
+    org_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    get_accessible_organization(db, org_id, current_user, require_owner=True)
+    return (
+        db.query(OrganizationInvitation)
+        .filter(OrganizationInvitation.organization_id == org_id)
+        .order_by(OrganizationInvitation.created_at.desc())
+        .all()
+    )
+
+@app.post("/invitations/accept", response_model=InvitationAcceptOut)
+def accept_organization_invitation(
+    payload: InvitationAcceptIn,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        invitation, member = accept_invitation(db, payload.token, current_user)
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    organization = db.query(Organization).filter(Organization.id == invitation.organization_id).first()
+    db.commit()
+
+    return InvitationAcceptOut(
+        organization_id=invitation.organization_id,
+        organization_name=organization.name if organization else "",
+        role=member.role,
+        status=invitation.status,
+    )
 
 @app.post("/organizations/{org_id}/members", response_model=OrganizationMemberOut)
 def add_organization_member(

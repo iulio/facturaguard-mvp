@@ -33,6 +33,7 @@ class Organization(Base):
     members = relationship("OrganizationMember", back_populates="organization", cascade="all, delete-orphan")
     audit_logs = relationship("AuditLog", back_populates="organization", cascade="all, delete-orphan")
     integrations = relationship("OrganizationIntegration", back_populates="organization", cascade="all, delete-orphan")
+    invitations = relationship("OrganizationInvitation", back_populates="organization", cascade="all, delete-orphan")
 
 class OrganizationMember(Base):
     __tablename__ = "organization_members"
@@ -118,3 +119,21 @@ class OrganizationIntegration(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     organization = relationship("Organization", back_populates="integrations")
+
+
+class OrganizationInvitation(Base):
+    __tablename__ = "organization_invitations"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    organization_id: Mapped[int] = mapped_column(ForeignKey("organizations.id"), index=True)
+    invited_email: Mapped[str] = mapped_column(String(255), index=True)
+    role: Mapped[str] = mapped_column(String(50), default="client_viewer")
+    token: Mapped[str] = mapped_column(String(120), unique=True, index=True)
+    status: Mapped[str] = mapped_column(String(30), default="pending")
+    invited_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    accepted_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime)
+    accepted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    organization = relationship("Organization", back_populates="invitations")

@@ -18,6 +18,9 @@ export default function Home() {
   const [portfolio, setPortfolio] = useState<any>(null);
   const [portfolioSearch, setPortfolioSearch] = useState("");
   const [riskFilter, setRiskFilter] = useState("");
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState("client_viewer");
+  const [invitations, setInvitations] = useState<any[]>([]);
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
 
@@ -26,7 +29,7 @@ export default function Home() {
   useEffect(() => { if (active) refresh(active); }, [active]);
 
   async function refresh(id: number) {
-    await Promise.all([loadDashboard(id), loadInvoices(id), loadAlerts(id), loadPortfolio()]);
+    await Promise.all([loadDashboard(id), loadInvoices(id), loadAlerts(id), loadPortfolio(), loadInvitations(id)]);
   }
 
   async function loadPortfolio() {
@@ -64,6 +67,25 @@ export default function Home() {
   async function loadDashboard(id: number) { setSummary(await apiFetch(`/organizations/${id}/dashboard`)); }
   async function loadInvoices(id: number) { setInvoices(await apiFetch(`/organizations/${id}/invoices`)); }
   async function loadAlerts(id: number) { setAlerts(await apiFetch(`/organizations/${id}/alerts`)); }
+
+  async function loadInvitations(id: number) {
+    try {
+      setInvitations(await apiFetch(`/organizations/${id}/invitations`));
+    } catch {
+      setInvitations([]);
+    }
+  }
+
+  async function sendInvitation() {
+    if (!active || !inviteEmail) return;
+    await apiFetch(`/organizations/${active}/invitations`, {
+      method: "POST",
+      body: JSON.stringify({ email: inviteEmail, role: inviteRole }),
+    });
+    setMsg(`Invitație trimisă către ${inviteEmail}.`);
+    setInviteEmail("");
+    await loadInvitations(active);
+  }
 
   async function uploadFile(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault(); setErr(""); setMsg("");
@@ -222,6 +244,40 @@ export default function Home() {
             <input className="input" type="file" name="file" accept=".csv,.xml,.zip" />
             <button className="btn" type="submit"><UploadCloud size={16} /> Importă</button>
           </form>
+        </div>
+      </section>
+
+      <section className="card" style={{ marginTop: 18 }}>
+        <div className="header">
+          <div>
+            <h2>Invitații firmă</h2>
+            <p>Trimite acces către client sau operator. În MVP, emailul poate fi dry-run în backend.</p>
+          </div>
+        </div>
+        <div className="grid grid-2">
+          <input className="input" placeholder="email@firma.ro" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} />
+          <select className="input" value={inviteRole} onChange={(e) => setInviteRole(e.target.value)}>
+            <option value="client_viewer">Client viewer</option>
+            <option value="client_operator">Client operator</option>
+            <option value="accountant_owner">Accountant owner</option>
+          </select>
+        </div>
+        <button className="btn" style={{ marginTop: 12 }} onClick={sendInvitation}>Trimite invitație</button>
+        <div style={{ marginTop: 18, overflowX: "auto" }}>
+          <table className="table">
+            <thead><tr><th>Email</th><th>Rol</th><th>Status</th><th>Expiră</th></tr></thead>
+            <tbody>
+              {invitations.map((invite) => (
+                <tr key={invite.id}>
+                  <td>{invite.invited_email}</td>
+                  <td>{invite.role}</td>
+                  <td><span className={`badge ${invite.status === "accepted" ? "validated" : "medium"}`}>{invite.status}</span></td>
+                  <td>{new Date(invite.expires_at).toLocaleDateString()}</td>
+                </tr>
+              ))}
+              {invitations.length === 0 && <tr><td colSpan={4}>Nu există invitații.</td></tr>}
+            </tbody>
+          </table>
         </div>
       </section>
 

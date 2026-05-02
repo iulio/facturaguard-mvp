@@ -297,3 +297,34 @@ CORS_ORIGINS=https://your-domain.com
 FG_EMAIL_DRY_RUN=false
 RATE_LIMIT_ENABLED=true
 ```
+
+
+---
+
+## v1.1 additions
+
+This version adds onboarding and invitations:
+
+- `organization_invitations` table
+- invitation tokens
+- invitation expiry
+- invite existing users by email
+- accept invitation endpoint
+- dry-run email notification for invitations
+- frontend invitation panel
+- audit logs:
+  - `invitation.created`
+  - `invitation.accepted`
+
+### New endpoints
+
+```txt
+POST /organizations/{org_id}/invitations
+GET  /organizations/{org_id}/invitations
+POST /invitations/accept
+```
+
+### MVP limitation
+
+For now, the invited user must already have an account.
+The next production step is a public invitation acceptance page that supports account creation.
