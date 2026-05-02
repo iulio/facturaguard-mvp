@@ -1,8 +1,9 @@
-import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
+from .settings import get_settings
 
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./facturaguard.db")
+settings = get_settings()
+DATABASE_URL = settings.database_url
 
 connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
 

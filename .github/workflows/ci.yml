@@ -31,6 +31,7 @@ jobs:
       - name: Import app
         env:
           AUTO_CREATE_TABLES: "true"
+          RATE_LIMIT_ENABLED: "false"
         run: |
           python - <<'PY'
           from app.main import app
@@ -41,12 +42,14 @@ jobs:
         env:
           DATABASE_URL: sqlite:///./ci_migration_test.db
           AUTO_CREATE_TABLES: "false"
+          RATE_LIMIT_ENABLED: "false"
         run: alembic upgrade head
 
       - name: Run backend tests
         env:
           DATABASE_URL: sqlite:///./ci_test.db
           AUTO_CREATE_TABLES: "true"
+          RATE_LIMIT_ENABLED: "false"
         run: pytest -q
 
   frontend:

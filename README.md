@@ -254,3 +254,46 @@ The risk score is based on:
 - unsent invoices
 - open alerts
 - issue ratio relative to total invoices
+
+
+---
+
+## v1.0 hardening additions
+
+This version hardens the MVP foundation:
+
+- central settings with `pydantic-settings`
+- `.env` support
+- configurable `DATABASE_URL`
+- configurable CORS
+- configurable JWT `SECRET_KEY`
+- health endpoint:
+  ```txt
+  GET /health
+  ```
+- readiness endpoint with DB check:
+  ```txt
+  GET /ready
+  ```
+- basic in-memory rate limiting
+- request timing header:
+  ```txt
+  X-Process-Time-Ms
+  ```
+- deployment notes in:
+  ```txt
+  docs/deployment.md
+  ```
+
+### Important production settings
+
+Set these before deploying publicly:
+
+```txt
+ENVIRONMENT=production
+SECRET_KEY=<long-random-secret>
+AUTO_CREATE_TABLES=false
+CORS_ORIGINS=https://your-domain.com
+FG_EMAIL_DRY_RUN=false
+RATE_LIMIT_ENABLED=true
+```

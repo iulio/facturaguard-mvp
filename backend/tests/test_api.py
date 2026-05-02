@@ -176,3 +176,13 @@ def test_portfolio_dashboard_summary():
     assert search_response.status_code == 200
     search_payload = search_response.json()
     assert all("Portfolio A" in item["name"] for item in search_payload["organizations"])
+
+
+def test_health_and_ready_endpoints():
+    health_response = client.get("/health")
+    assert health_response.status_code == 200
+    assert health_response.json()["status"] == "ok"
+
+    ready_response = client.get("/ready")
+    assert ready_response.status_code == 200
+    assert ready_response.json()["status"] in {"ready", "not_ready"}

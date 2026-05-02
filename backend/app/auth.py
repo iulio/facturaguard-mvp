@@ -6,10 +6,12 @@ from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 from .database import get_db
 from .models import User
+from .settings import get_settings
 
-SECRET_KEY = "change-this-secret-in-production"
+settings = get_settings()
+SECRET_KEY = settings.secret_key
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24
+ACCESS_TOKEN_EXPIRE_MINUTES = settings.access_token_expire_minutes
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login-form")

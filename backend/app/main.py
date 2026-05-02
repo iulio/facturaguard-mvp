@@ -6,9 +6,10 @@ from sqlalchemy.orm import Session
 
 from .access import get_accessible_organization, write_audit_log
 from .auth import create_access_token, get_current_user, hash_password, verify_password
-import os
+from sqlalchemy import text
 from .database import Base, engine, get_db
 from .jobs import run_status_check, start_scheduler, stop_scheduler
+from .middleware import InMemoryRateLimitMiddleware, RequestTimingMiddleware
 from .models import Alert, AuditLog, Invoice, Organization, OrganizationIntegration, OrganizationMember, User
 from .parsers import parse_csv_upload, parse_xml_upload, parse_zip_upload
 from .schemas import (
@@ -31,6 +32,7 @@ from .schemas import (
     UserCreate,
     UserOut,
 )
+from .settings import get_settings
 from .services import (
     build_monthly_report,
     compute_internal_status,
@@ -46,7 +48,9 @@ from .sync_service import (
     test_anaf_connection,
 )
 
-if os.getenv("AUTO_CREATE_TABLES", "true").lower() == "true":
+settings = get_settings()
+
+if settings.auto_create_tables:
     Base.metadata.create_all(bind=engine)
 
 @asynccontextmanager
@@ -55,11 +59,14 @@ async def lifespan(app: FastAPI):
     yield
     stop_scheduler()
 
-app = FastAPI(title="FacturaGuard MVP API", version="0.5.0", lifespan=lifespan)
+app = FastAPI(title=settings.app_name, version=settings.app_version, lifespan=lifespan)
+
+app.add_middleware(RequestTimingMiddleware)
+app.add_middleware(InMemoryRateLimitMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=settings.cors_origin_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -67,7 +74,27 @@ app.add_middleware(
 
 @app.get("/")
 def root():
-    return {"app": "FacturaGuard MVP API", "version": "0.5.0", "status": "ok"}
+    return {"app": settings.app_name, "version": settings.app_version, "status": "ok"}
+
+
+@app.get("/health")
+def health():
+    return {
+        "status": "ok",
+        "app": settings.app_name,
+        "version": settings.app_version,
+        "environment": settings.environment,
+    }
+
+@app.get("/ready")
+def ready():
+    try:
+        with engine.connect() as connection:
+            connection.execute(text("SELECT 1"))
+        return {"status": "ready", "database": "ok"}
+    except Exception as exc:
+        return {"status": "not_ready", "database": "error", "detail": str(exc)}
+
 
 @app.post("/auth/register", response_model=TokenOut)
 def register(payload: UserCreate, db: Session = Depends(get_db)):

@@ -1,10 +1,10 @@
-import os
 from datetime import datetime
 from apscheduler.schedulers.background import BackgroundScheduler
 from sqlalchemy.orm import Session
 from .database import SessionLocal
 from .models import Invoice, Organization, User
 from .services import compute_internal_status, create_alert_for_invoice
+from .settings import get_settings
 from .sync_service import sync_organization_invoices
 
 scheduler: BackgroundScheduler | None = None
@@ -30,12 +30,13 @@ def run_status_check(db: Session | None = None) -> dict:
 
 def start_scheduler():
     global scheduler
-    if os.getenv("FG_ENABLE_SCHEDULER", "true").lower() == "false":
+    settings = get_settings()
+    if not settings.fg_enable_scheduler:
         print("FacturaGuard scheduler dezactivat.")
         return None
     if scheduler and scheduler.running:
         return scheduler
-    interval = int(os.getenv("FG_STATUS_CHECK_INTERVAL_MINUTES", "60"))
+    interval = settings.fg_status_check_interval_minutes
     scheduler = BackgroundScheduler(timezone="UTC")
     scheduler.add_job(run_status_check, "interval", minutes=interval, id="facturaguard_status_check", replace_existing=True)
     scheduler.start()
