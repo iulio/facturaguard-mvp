@@ -29,13 +29,24 @@ jobs:
           pip install -r requirements.txt
 
       - name: Import app
+        env:
+          AUTO_CREATE_TABLES: "true"
         run: |
           python - <<'PY'
           from app.main import app
           print(app.title)
           PY
 
+      - name: Check Alembic migration
+        env:
+          DATABASE_URL: sqlite:///./ci_migration_test.db
+          AUTO_CREATE_TABLES: "false"
+        run: alembic upgrade head
+
       - name: Run backend tests
+        env:
+          DATABASE_URL: sqlite:///./ci_test.db
+          AUTO_CREATE_TABLES: "true"
         run: pytest -q
 
   frontend:

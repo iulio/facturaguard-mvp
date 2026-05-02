@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from .access import get_accessible_organization, write_audit_log
 from .auth import create_access_token, get_current_user, hash_password, verify_password
+import os
 from .database import Base, engine, get_db
 from .jobs import run_status_check, start_scheduler, stop_scheduler
 from .models import Alert, AuditLog, Invoice, Organization, OrganizationMember, User
@@ -32,7 +33,8 @@ from .services import (
     explain_anaf_error,
 )
 
-Base.metadata.create_all(bind=engine)
+if os.getenv("AUTO_CREATE_TABLES", "true").lower() == "true":
+    Base.metadata.create_all(bind=engine)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

@@ -107,3 +107,55 @@ GET  /organizations/{org_id}/audit-logs
 ```
 
 For this MVP, the user must already exist.
+
+
+---
+
+## v0.6 additions
+
+This version adds a production-style database layer:
+
+- PostgreSQL service in `docker-compose.yml`
+- `DATABASE_URL` configuration
+- `AUTO_CREATE_TABLES` flag
+- Alembic migrations
+- initial migration: `0001_initial_schema`
+- CI migration check
+- `Makefile` shortcuts
+
+### Run with PostgreSQL
+
+```bash
+docker compose up --build
+```
+
+The backend runs:
+
+```bash
+alembic upgrade head
+uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
+
+### Run migrations manually
+
+```bash
+cd backend
+alembic upgrade head
+```
+
+### Create a new migration
+
+```bash
+cd backend
+alembic revision --autogenerate -m "describe change"
+```
+
+### Local SQLite fallback
+
+If `DATABASE_URL` is not set, the backend falls back to:
+
+```txt
+sqlite:///./facturaguard.db
+```
+
+For production, use PostgreSQL.
