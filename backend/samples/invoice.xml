@@ -1,0 +1,10 @@
+<Invoice>
+  <InvoiceNumber>FCT-2001</InvoiceNumber>
+  <IssueDate>2026-04-28</IssueDate>
+  <CustomerName>Client XML SRL</CustomerName>
+  <CustomerCUI>RO12345678</CustomerCUI>
+  <TotalAmount>1900.00</TotalAmount>
+  <Currency>RON</Currency>
+  <AnafStatus>rejected</AnafStatus>
+  <AnafMessage>CUI invalid pentru client</AnafMessage>
+</Invoice>

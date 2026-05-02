@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Invoice xmlns="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2"
+         xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2"
+         xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2">
+  <cbc:ID>UBL-3001</cbc:ID>
+  <cbc:IssueDate>2026-04-29</cbc:IssueDate>
+  <cbc:DocumentCurrencyCode>RON</cbc:DocumentCurrencyCode>
+  <cac:AccountingCustomerParty>
+    <cac:Party>
+      <cac:PartyTaxScheme><cbc:CompanyID>RO55566677</cbc:CompanyID></cac:PartyTaxScheme>
+      <cac:PartyLegalEntity><cbc:RegistrationName>Client UBL SRL</cbc:RegistrationName></cac:PartyLegalEntity>
+    </cac:Party>
+  </cac:AccountingCustomerParty>
+  <cac:LegalMonetaryTotal><cbc:PayableAmount currencyID="RON">2450.00</cbc:PayableAmount></cac:LegalMonetaryTotal>
+  <AnafStatus>rejected</AnafStatus>
+  <AnafMessage>XML schema validation error</AnafMessage>
+</Invoice>

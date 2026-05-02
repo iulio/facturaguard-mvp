@@ -1,0 +1,24 @@
+services:
+  backend:
+    build:
+      context: ./backend
+    container_name: facturaguard-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - FG_ENABLE_SCHEDULER=true
+      - FG_STATUS_CHECK_INTERVAL_MINUTES=60
+      - FG_EMAIL_DRY_RUN=true
+    volumes:
+      - ./backend:/app
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: facturaguard-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_BASE=http://localhost:8000
+    depends_on:
+      - backend

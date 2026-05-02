@@ -1,0 +1,4 @@
+invoice_number,issue_date,customer_name,customer_cui,total_amount,currency,anaf_status,anaf_message
+FCT-1001,2026-04-27,ABC Client SRL,RO12345678,1250.50,RON,validated,
+FCT-1002,2026-04-28,Client Gresit SRL,RO00000000,800,RON,rejected,CUI invalid
+FCT-1003,2026-04-29,Transport Partner SRL,RO33344455,4200,RON,unsent,
