@@ -532,3 +532,30 @@ POST /billing/netopia-mock/webhook
 ```
 
 This is a mock integration. It does not process real money.
+
+
+---
+
+## v1.8 additions
+
+This version adds SaaS presentation pages:
+
+- landing page:
+  ```txt
+  /landing
+  ```
+- pricing page:
+  ```txt
+  /pricing
+  ```
+- pricing page uses:
+  ```txt
+  GET /billing/plans
+  ```
+- marketing CSS and responsive layout
+- marketing documentation:
+  ```txt
+  docs/marketing.md
+  ```
+
+The product can now be shown as a SaaS concept, not only as an internal dashboard.
