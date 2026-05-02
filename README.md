@@ -192,3 +192,33 @@ POST /organizations/{org_id}/invoices/sync-statuses
 
 The ANAF connector in v0.7 is a mock connector. It does not call ANAF/SPV.
 It exists to stabilize the product architecture before implementing the live connector.
+
+
+---
+
+## v0.8 additions
+
+This version adds exportable accountant-facing reports:
+
+- monthly PDF report generated with ReportLab
+- invoice CSV export
+- audit events for PDF and CSV exports
+- backend tests for CSV/PDF export
+- frontend buttons:
+  - `Export CSV`
+  - `Raport PDF`
+
+### New endpoints
+
+```txt
+GET /organizations/{org_id}/reports/monthly.pdf?year=2026&month=4
+GET /organizations/{org_id}/invoices/export.csv
+```
+
+The PDF report includes:
+
+- company identification
+- monthly compliance summary
+- top recurring errors
+- recommendations
+- problematic invoices table

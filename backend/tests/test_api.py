@@ -111,3 +111,38 @@ def test_mock_anaf_sync_flow():
     payload = sync_response.json()
     assert payload["checked"] >= 1
     assert "results" in payload
+
+
+def test_report_pdf_and_csv_exports():
+    _, token = register_user("export-owner")
+
+    org_response = client.post(
+        "/organizations",
+        json={"name": "Export Test SRL", "cui": "RO55667788"},
+        headers=auth_header(token),
+    )
+    assert org_response.status_code == 200
+    org_id = org_response.json()["id"]
+
+    upload_response = client.post(
+        f"/organizations/{org_id}/invoices/upload",
+        files={"file": ("invoices.csv", "invoice_number,issue_date,customer_name,customer_cui,total_amount,anaf_status\nEXP-1,2026-04-27,Client,RO1,100,validated\n", "text/csv")},
+        headers=auth_header(token),
+    )
+    assert upload_response.status_code == 200, upload_response.text
+
+    csv_response = client.get(
+        f"/organizations/{org_id}/invoices/export.csv",
+        headers=auth_header(token),
+    )
+    assert csv_response.status_code == 200
+    assert "invoice_number" in csv_response.text
+    assert "EXP-1" in csv_response.text
+
+    pdf_response = client.get(
+        f"/organizations/{org_id}/reports/monthly.pdf?year=2026&month=4",
+        headers=auth_header(token),
+    )
+    assert pdf_response.status_code == 200
+    assert pdf_response.headers["content-type"] == "application/pdf"
+    assert pdf_response.content.startswith(b"%PDF")

@@ -1,6 +1,6 @@
 from contextlib import asynccontextmanager
 from datetime import datetime
-from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, File, HTTPException, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
@@ -36,6 +36,7 @@ from .services import (
     create_alert_for_invoice,
     explain_anaf_error,
 )
+from .report_service import generate_invoices_csv, generate_monthly_report_pdf
 from .sync_service import (
     get_or_create_anaf_integration,
     sync_invoice_status,
@@ -425,6 +426,69 @@ def monthly_report(
     get_accessible_organization(db, org_id, current_user)
     invoices = db.query(Invoice).filter(Invoice.organization_id == org_id).all()
     return build_monthly_report(org_id, year, month, invoices)
+
+
+@app.get("/organizations/{org_id}/reports/monthly.pdf")
+def monthly_report_pdf(
+    org_id: int,
+    year: int,
+    month: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    organization = get_accessible_organization(db, org_id, current_user)
+    invoices = db.query(Invoice).filter(Invoice.organization_id == org_id).all()
+    pdf_bytes = generate_monthly_report_pdf(organization, year, month, invoices)
+
+    filename = f"facturaguard-report-{organization.cui}-{year}-{month:02d}.pdf"
+    write_audit_log(
+        db,
+        organization_id=org_id,
+        actor_user_id=current_user.id,
+        action="report.pdf_generated",
+        entity_type="monthly_report",
+        entity_id=f"{year}-{month:02d}",
+        message=f"Raportul PDF pentru {year}-{month:02d} a fost generat.",
+    )
+    db.commit()
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+@app.get("/organizations/{org_id}/invoices/export.csv")
+def export_invoices_csv(
+    org_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    organization = get_accessible_organization(db, org_id, current_user)
+    invoices = (
+        db.query(Invoice)
+        .filter(Invoice.organization_id == org_id)
+        .order_by(Invoice.issue_date.desc())
+        .all()
+    )
+    csv_content = generate_invoices_csv(invoices)
+
+    write_audit_log(
+        db,
+        organization_id=org_id,
+        actor_user_id=current_user.id,
+        action="invoices.csv_exported",
+        entity_type="invoice_export",
+        message=f"Export CSV generat pentru {len(invoices)} facturi.",
+    )
+    db.commit()
+
+    filename = f"facturaguard-invoices-{organization.cui}.csv"
+    return Response(
+        content=csv_content,
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 @app.get("/organizations/{org_id}/audit-logs", response_model=list[AuditLogOut])
 def list_audit_logs(
