@@ -443,3 +443,34 @@ def test_netopia_mock_checkout_and_webhook_activates_plan():
     )
     assert subscription_response.status_code == 200
     assert subscription_response.json()["plan_code"] == "pro"
+
+
+def test_onboarding_status_progression():
+    _, token = register_user("onboarding-user")
+
+    initial = client.get("/onboarding/status", headers=auth_header(token))
+    assert initial.status_code == 200
+    assert initial.json()["next_step"] == "create_organization"
+
+    org_response = client.post(
+        "/organizations",
+        json={"name": "Onboarding Test SRL", "cui": "RO91919191"},
+        headers=auth_header(token),
+    )
+    assert org_response.status_code == 200
+    org_id = org_response.json()["id"]
+
+    after_org = client.get("/onboarding/status", headers=auth_header(token))
+    assert after_org.status_code == 200
+    assert after_org.json()["next_step"] == "upload_invoices"
+
+    upload_response = client.post(
+        f"/organizations/{org_id}/invoices/upload",
+        files={"file": ("onboarding.csv", "invoice_number,issue_date,customer_name,customer_cui,total_amount,anaf_status\nONB-1,2026-04-27,Client,RO1,100,pending\n", "text/csv")},
+        headers=auth_header(token),
+    )
+    assert upload_response.status_code == 200
+
+    after_upload = client.get("/onboarding/status", headers=auth_header(token))
+    assert after_upload.status_code == 200
+    assert after_upload.json()["next_step"] == "run_sync"

@@ -559,3 +559,30 @@ This version adds SaaS presentation pages:
   ```
 
 The product can now be shown as a SaaS concept, not only as an internal dashboard.
+
+
+---
+
+## v1.9 additions
+
+This version adds first-run onboarding:
+
+- onboarding status endpoint:
+  ```txt
+  GET /onboarding/status
+  ```
+- onboarding wizard page:
+  ```txt
+  /onboarding
+  ```
+- guided steps:
+  1. create first organization
+  2. upload first CSV/XML/ZIP
+  3. run Mock ANAF sync
+  4. review dashboard
+- dashboard links to onboarding
+- backend tests for onboarding progression
+- documentation:
+  ```txt
+  docs/onboarding.md
+  ```

@@ -218,7 +218,7 @@ export default function Home() {
   if (!authed) {
     return (
       <main className="container">
-        <h1>FacturaGuard MVP</h1><p><a href="/landing">Landing</a> · <a href="/pricing">Prețuri</a></p>
+        <h1>FacturaGuard MVP</h1><p><a href="/landing">Landing</a> · <a href="/pricing">Prețuri</a> · <a href="/onboarding">Onboarding</a></p>
         <div className="card" style={{ maxWidth: 520 }}>
           <h2>{mode === "register" ? "Creează cont" : "Login"}</h2>
           <form onSubmit={submitAuth} className="grid">
@@ -250,7 +250,7 @@ export default function Home() {
     <main className="container">
       <div className="header">
         <div><h1>FacturaGuard Dashboard</h1><p>MVP e-Factura monitorizare.</p></div>
-        <button className="btn secondary" onClick={logout}><LogOut size={16} /> Logout</button>
+        <div style={{ display: "flex", gap: 8 }}><a className="btn secondary" href="/onboarding">Onboarding</a><button className="btn secondary" onClick={logout}><LogOut size={16} /> Logout</button></div>
       </div>
 
       {err && <p className="error">{err}</p>}

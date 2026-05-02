@@ -33,6 +33,7 @@ from .schemas import (
     LoginIn,
     MessageOut,
     MonthlyReport,
+    OnboardingStatusOut,
     NetopiaMockWebhookIn,
     PasswordChangeIn,
     PasswordResetConfirmIn,
@@ -61,6 +62,7 @@ from .services import (
     create_alert_for_invoice,
     explain_anaf_error,
 )
+from .onboarding_service import build_onboarding_status
 from .password_service import change_password, create_password_reset_token, reset_password_with_token
 from .payment_service import create_netopia_mock_checkout, process_netopia_mock_webhook
 from .portfolio_service import build_portfolio_summary
@@ -198,6 +200,14 @@ def change_current_user_password(
     return MessageOut(message="Parola a fost schimbată.")
 
 
+
+
+@app.get("/onboarding/status", response_model=OnboardingStatusOut)
+def get_onboarding_status(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return build_onboarding_status(db, current_user)
 
 @app.get("/portfolio", response_model=PortfolioSummary)
 def portfolio_dashboard(

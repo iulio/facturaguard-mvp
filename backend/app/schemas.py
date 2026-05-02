@@ -323,3 +323,15 @@ class NetopiaMockWebhookIn(BaseModel):
     session_id: str
     status: str
     secret: str
+
+
+class OnboardingStatusOut(BaseModel):
+    has_organization: bool
+    organization_id: int | None = None
+    organization_name: str | None = None
+    has_invoices: bool
+    invoice_count: int
+    has_run_sync: bool
+    open_alerts: int
+    completed: bool
+    next_step: str
