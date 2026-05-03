@@ -43,6 +43,7 @@ export default function LandingPage() {
           <div className="marketing-links">
             <Link href="/pricing">Prețuri</Link>
             <Link href="/roi">ROI</Link>
+            <Link href="/help">Help</Link>
             <Link href="/">Login</Link>
           </div>
         </nav>

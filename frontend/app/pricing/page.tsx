@@ -24,6 +24,7 @@ export default function PricingPage() {
           <div className="marketing-links">
             <Link href="/landing">Acasă</Link>
             <Link href="/roi">ROI</Link>
+            <Link href="/help">Help</Link>
             <Link href="/">Login</Link>
           </div>
         </nav>

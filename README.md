@@ -996,3 +996,25 @@ This version adds a commercial ROI calculator:
   ```
 
 No database migration is included in this version.
+
+
+---
+
+## v3.4 help center
+
+This version adds a public help center and demo script:
+
+- public page:
+  ```txt
+  /help
+  ```
+- FAQ
+- demo sales script
+- positioning for accountants and SMEs
+- documentation:
+  ```txt
+  docs/help-center.md
+  docs/demo-script.md
+  ```
+
+No database migration is included in this version.
