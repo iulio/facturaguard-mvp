@@ -15,9 +15,10 @@ from .database import Base, engine, get_db
 from .jobs import run_status_check, start_scheduler, stop_scheduler
 from .digest_service import build_daily_digest, send_daily_digest
 from .file_storage import read_document_content, store_upload_file
+from .invoice_notes_service import create_invoice_note, list_invoice_notes
 from .invitation_service import accept_invitation, create_invitation, get_public_invitation
 from .middleware import InMemoryRateLimitMiddleware, RequestTimingMiddleware
-from .models import Alert, AuditLog, Invoice, Organization, OrganizationDocument, OrganizationIntegration, OrganizationInvitation, OrganizationMember, OrganizationNotificationSettings, OrganizationSubscription, PaymentTransaction, SavedView, User
+from .models import Alert, AuditLog, Invoice, InvoiceNote, Organization, OrganizationDocument, OrganizationIntegration, OrganizationInvitation, OrganizationMember, OrganizationNotificationSettings, OrganizationSubscription, PaymentTransaction, SavedView, User
 from .parsers import parse_csv_upload, parse_xml_upload, parse_zip_upload
 from .schemas import (
     AlertOut,
@@ -32,6 +33,8 @@ from .schemas import (
     DashboardSummary,
     DigestPreviewOut,
     DigestSendResult,
+    InvoiceNoteCreate,
+    InvoiceNoteOut,
     InvoiceOut,
     InvitationAcceptIn,
     InvitationAcceptOut,
@@ -614,6 +617,59 @@ def bulk_invoice_action(
 
     db.commit()
     return result
+
+
+@app.get("/organizations/{org_id}/invoices/{invoice_id}/notes", response_model=list[InvoiceNoteOut])
+def get_invoice_notes(
+    org_id: int,
+    invoice_id: int,
+    include_internal: bool = True,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    organization = get_accessible_organization(db, org_id, current_user)
+    invoice = (
+        db.query(Invoice)
+        .filter(Invoice.id == invoice_id, Invoice.organization_id == org_id)
+        .first()
+    )
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Factura nu a fost găsită.")
+
+    return list_invoice_notes(db, organization, invoice, include_internal=include_internal)
+
+@app.post("/organizations/{org_id}/invoices/{invoice_id}/notes", response_model=InvoiceNoteOut)
+def add_invoice_note(
+    org_id: int,
+    invoice_id: int,
+    payload: InvoiceNoteCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    organization = get_accessible_organization(db, org_id, current_user, require_write=True)
+    invoice = (
+        db.query(Invoice)
+        .filter(Invoice.id == invoice_id, Invoice.organization_id == org_id)
+        .first()
+    )
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Factura nu a fost găsită.")
+
+    try:
+        note = create_invoice_note(
+            db,
+            organization=organization,
+            invoice=invoice,
+            actor=current_user,
+            body=payload.body,
+            is_internal=payload.is_internal,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    db.commit()
+    db.refresh(note)
+    return note
 
 @app.get("/organizations/{org_id}/invoices", response_model=list[InvoiceOut])
 def list_invoices(

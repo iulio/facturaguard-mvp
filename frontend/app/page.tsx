@@ -314,7 +314,7 @@ export default function Home() {
     <main className="container">
       <div className="header">
         <div><h1>FacturaGuard Dashboard</h1><p>MVP e-Factura monitorizare.</p></div>
-        <div style={{ display: "flex", gap: 8 }}><a className="btn secondary" href="/client-portal">Portal client</a><a className="btn secondary" href="/settings">Setări</a><a className="btn secondary" href="/audit">Audit</a><a className="btn secondary" href="/onboarding">Onboarding</a><button className="btn secondary" onClick={logout}><LogOut size={16} /> Logout</button></div>
+        <div style={{ display: "flex", gap: 8 }}><a className="btn secondary" href="/invoice-notes">Note facturi</a><a className="btn secondary" href="/client-portal">Portal client</a><a className="btn secondary" href="/settings">Setări</a><a className="btn secondary" href="/audit">Audit</a><a className="btn secondary" href="/onboarding">Onboarding</a><button className="btn secondary" onClick={logout}><LogOut size={16} /> Logout</button></div>
       </div>
 
       {err && <p className="error">{err}</p>}

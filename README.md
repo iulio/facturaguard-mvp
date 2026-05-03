@@ -785,3 +785,34 @@ This version adds bulk actions for invoices:
 ```txt
 POST /organizations/{org_id}/invoices/bulk-action
 ```
+
+
+---
+
+## v2.7 invoice notes
+
+This version adds collaboration notes on invoices:
+
+- invoice notes table
+- add/list notes API
+- frontend page:
+  ```txt
+  /invoice-notes
+  ```
+- internal/client-visible note flag
+- audit event:
+  ```txt
+  invoice_note.created
+  ```
+- tests for invoice notes
+- documentation:
+  ```txt
+  docs/invoice-notes.md
+  ```
+
+### New endpoints
+
+```txt
+GET  /organizations/{org_id}/invoices/{invoice_id}/notes
+POST /organizations/{org_id}/invoices/{invoice_id}/notes
+```

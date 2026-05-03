@@ -75,6 +75,7 @@ class Invoice(Base):
 
     organization = relationship("Organization", back_populates="invoices")
     alerts = relationship("Alert", back_populates="invoice", cascade="all, delete-orphan")
+    notes = relationship("InvoiceNote", back_populates="invoice", cascade="all, delete-orphan")
 
 class Alert(Base):
     __tablename__ = "alerts"
@@ -235,3 +236,17 @@ class SavedView(Base):
     is_default: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class InvoiceNote(Base):
+    __tablename__ = "invoice_notes"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    organization_id: Mapped[int] = mapped_column(ForeignKey("organizations.id"), index=True)
+    invoice_id: Mapped[int] = mapped_column(ForeignKey("invoices.id"), index=True)
+    author_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    body: Mapped[str] = mapped_column(Text)
+    is_internal: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    invoice = relationship("Invoice", back_populates="notes")

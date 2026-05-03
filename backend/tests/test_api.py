@@ -708,3 +708,38 @@ def test_bulk_invoice_action_sync_and_resolve_alerts():
         headers=auth_header(token),
     )
     assert alerts_response.status_code == 200
+
+
+def test_invoice_notes_flow():
+    _, token = register_user("notes-owner")
+
+    org_response = client.post(
+        "/organizations",
+        json={"name": "Notes Test SRL", "cui": "RO55443322"},
+        headers=auth_header(token),
+    )
+    assert org_response.status_code == 200
+    org_id = org_response.json()["id"]
+
+    upload_response = client.post(
+        f"/organizations/{org_id}/invoices/upload",
+        files={"file": ("notes.csv", "invoice_number,issue_date,customer_name,customer_cui,total_amount\nNOTE-1,2026-04-27,Client,RO1,100\n", "text/csv")},
+        headers=auth_header(token),
+    )
+    assert upload_response.status_code == 200, upload_response.text
+    invoice_id = upload_response.json()[0]["id"]
+
+    create_note = client.post(
+        f"/organizations/{org_id}/invoices/{invoice_id}/notes",
+        json={"body": "Clientul a confirmat corectura.", "is_internal": False},
+        headers=auth_header(token),
+    )
+    assert create_note.status_code == 200, create_note.text
+    assert create_note.json()["body"] == "Clientul a confirmat corectura."
+
+    list_notes = client.get(
+        f"/organizations/{org_id}/invoices/{invoice_id}/notes",
+        headers=auth_header(token),
+    )
+    assert list_notes.status_code == 200
+    assert len(list_notes.json()) >= 1

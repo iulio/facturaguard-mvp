@@ -442,3 +442,20 @@ class BulkInvoiceActionResult(BaseModel):
     processed: int
     skipped: int
     message: str
+
+
+class InvoiceNoteCreate(BaseModel):
+    body: str
+    is_internal: bool = False
+
+class InvoiceNoteOut(BaseModel):
+    id: int
+    organization_id: int
+    invoice_id: int
+    author_user_id: int | None
+    body: str
+    is_internal: bool
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
