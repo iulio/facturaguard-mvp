@@ -76,6 +76,7 @@ from .schemas import (
     SubscriptionUpdateIn,
     UsageOut,
     UserOut,
+    WorkQueueSummaryOut,
 )
 from .settings import get_settings
 from .services import (
@@ -91,6 +92,7 @@ from .payment_service import create_netopia_mock_checkout, process_netopia_mock_
 from .portfolio_service import build_portfolio_summary
 from .report_service import generate_invoices_csv, generate_monthly_report_pdf
 from .saved_views_service import create_saved_view, delete_saved_view, list_saved_views, update_saved_view
+from .work_queue_service import build_work_queue
 from .sync_service import (
     get_or_create_anaf_integration,
     sync_invoice_status,
@@ -572,6 +574,27 @@ def add_organization_member(
     db.commit()
     db.refresh(member)
     return member
+
+
+@app.get("/organizations/{org_id}/work-queue", response_model=WorkQueueSummaryOut)
+def get_work_queue(
+    org_id: int,
+    status: str | None = None,
+    priority: str | None = None,
+    tag: str | None = None,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    organization = get_accessible_organization(db, org_id, current_user)
+    return build_work_queue(
+        db,
+        organization=organization,
+        status=status,
+        priority=priority,
+        tag=tag,
+        limit=limit,
+    )
 
 @app.get("/organizations/{org_id}/dashboard", response_model=DashboardSummary)
 def organization_dashboard(

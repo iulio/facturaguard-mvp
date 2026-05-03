@@ -477,3 +477,14 @@ class InvoiceMetadataOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class WorkQueueSummaryOut(BaseModel):
+    organization_id: int
+    total: int
+    urgent: int
+    high: int
+    rejected: int
+    overdue: int
+    near_deadline: int
+    invoices: list[InvoiceOut]

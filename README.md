@@ -857,3 +857,31 @@ Fixes SQLite-compatible Alembic migration for invoice metadata.
 The migration `0011_invoice_metadata.py` now adds `assignee_user_id` as a nullable integer column without an inline foreign-key constraint, because SQLite cannot add FK constraints through `ALTER TABLE` in the CI migration check.
 
 The SQLAlchemy model still keeps the application-level field.
+
+
+---
+
+## v2.9 work queue
+
+This version adds an operational invoice work queue:
+
+- frontend page:
+  ```txt
+  /work-queue
+  ```
+- filter by:
+  - status
+  - priority
+  - tag
+- queue summary metrics
+- tests for work queue filters
+- documentation:
+  ```txt
+  docs/work-queue.md
+  ```
+
+### New endpoint
+
+```txt
+GET /organizations/{org_id}/work-queue
+```
