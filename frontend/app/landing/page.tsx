@@ -42,6 +42,7 @@ export default function LandingPage() {
           <div className="brand">FacturaGuard</div>
           <div className="marketing-links">
             <Link href="/pricing">Prețuri</Link>
+            <Link href="/roi">ROI</Link>
             <Link href="/">Login</Link>
           </div>
         </nav>
@@ -57,6 +58,7 @@ export default function LandingPage() {
             <div className="hero-actions">
               <Link href="/" className="btn">Începe demo</Link>
               <Link href="/pricing" className="btn secondary">Vezi prețuri</Link>
+              <Link href="/roi" className="btn secondary">Calculează ROI</Link>
             </div>
           </div>
 

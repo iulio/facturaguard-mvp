@@ -282,7 +282,7 @@ export default function Home() {
   if (!authed) {
     return (
       <main className="container">
-        <h1>FacturaGuard MVP</h1><p><a href="/landing">Landing</a> · <a href="/pricing">Prețuri</a> · <a href="/onboarding">Onboarding</a></p>
+        <h1>FacturaGuard MVP</h1><p><a href="/landing">Landing</a> · <a href="/pricing">Prețuri</a> · <a href="/roi">ROI</a> · <a href="/onboarding">Onboarding</a></p>
         <div className="card" style={{ maxWidth: 520 }}>
           <h2>{mode === "register" ? "Creează cont" : "Login"}</h2>
           <form onSubmit={submitAuth} className="grid">

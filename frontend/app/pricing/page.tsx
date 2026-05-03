@@ -23,6 +23,7 @@ export default function PricingPage() {
           <Link href="/landing" className="brand">FacturaGuard</Link>
           <div className="marketing-links">
             <Link href="/landing">Acasă</Link>
+            <Link href="/roi">ROI</Link>
             <Link href="/">Login</Link>
           </div>
         </nav>

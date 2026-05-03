@@ -969,3 +969,30 @@ This version adds public API developer documentation:
   ```
 
 No database migration is included in this version.
+
+
+---
+
+## v3.3 ROI calculator
+
+This version adds a commercial ROI calculator:
+
+- public page:
+  ```txt
+  /roi
+  ```
+- links from landing/pricing/login
+- estimates:
+  - monthly invoices
+  - manual hours
+  - saved hours
+  - saved cost
+  - net monthly value
+  - annual value
+  - ROI
+- documentation:
+  ```txt
+  docs/roi-calculator.md
+  ```
+
+No database migration is included in this version.
