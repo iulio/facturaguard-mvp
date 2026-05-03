@@ -823,3 +823,59 @@ def test_system_status_endpoint():
     assert payload["database"] in {"ok", "error"}
     assert "app_version" in payload
     assert "total_organizations" in payload
+
+
+def test_api_key_create_public_invoice_and_revoke():
+    _, token = register_user("api-key-owner")
+
+    org_response = client.post(
+        "/organizations",
+        json={"name": "API Key Test SRL", "cui": "RO10101010"},
+        headers=auth_header(token),
+    )
+    assert org_response.status_code == 200
+    org_id = org_response.json()["id"]
+
+    create_key_response = client.post(
+        f"/organizations/{org_id}/api-keys",
+        json={"name": "ERP", "scopes": "invoices:write"},
+        headers=auth_header(token),
+    )
+    assert create_key_response.status_code == 200, create_key_response.text
+    raw_key = create_key_response.json()["raw_key"]
+    key_id = create_key_response.json()["id"]
+
+    public_response = client.post(
+        "/public-api/v1/invoices",
+        json={
+            "invoice_number": "API-1",
+            "issue_date": "2026-04-27",
+            "customer_name": "API Client",
+            "customer_cui": "RO1",
+            "total_amount": 123.45,
+            "anaf_status": "pending",
+        },
+        headers={"X-API-Key": raw_key},
+    )
+    assert public_response.status_code == 200, public_response.text
+    assert public_response.json()["invoice_number"] == "API-1"
+
+    revoke_response = client.post(
+        f"/organizations/{org_id}/api-keys/{key_id}/revoke",
+        headers=auth_header(token),
+    )
+    assert revoke_response.status_code == 200
+    assert revoke_response.json()["status"] == "revoked"
+
+    public_after_revoke = client.post(
+        "/public-api/v1/invoices",
+        json={
+            "invoice_number": "API-2",
+            "issue_date": "2026-04-27",
+            "customer_name": "API Client",
+            "customer_cui": "RO1",
+            "total_amount": 123.45,
+        },
+        headers={"X-API-Key": raw_key},
+    )
+    assert public_after_revoke.status_code == 401

@@ -505,3 +505,34 @@ class SystemStatusOut(BaseModel):
     total_invoices: int
     total_documents: int
     total_open_alerts: int
+
+
+class ApiKeyCreate(BaseModel):
+    name: str
+    scopes: str = "invoices:write"
+
+class ApiKeyOut(BaseModel):
+    id: int
+    organization_id: int
+    name: str
+    key_prefix: str
+    scopes: str
+    status: str
+    last_used_at: datetime | None = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class ApiKeyCreatedOut(ApiKeyOut):
+    raw_key: str
+
+class ApiInvoiceCreate(BaseModel):
+    invoice_number: str
+    issue_date: date
+    customer_name: str
+    customer_cui: str
+    total_amount: float
+    currency: str = "RON"
+    anaf_status: str = "pending"
+    anaf_message: str | None = None

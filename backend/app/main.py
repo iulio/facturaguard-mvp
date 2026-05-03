@@ -1,6 +1,6 @@
 from contextlib import asynccontextmanager
 from datetime import datetime
-from fastapi import Depends, FastAPI, File, HTTPException, Response, UploadFile
+from fastapi import Depends, FastAPI, File, Header, HTTPException, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
@@ -8,6 +8,7 @@ from .access import get_accessible_organization, write_audit_log
 from .bulk_actions_service import run_bulk_invoice_action
 from .client_portal_service import get_client_portal_detail, get_client_portal_organizations
 from .billing import assert_can_create_organization, assert_can_import_invoices, assert_can_store_document, get_or_create_subscription, get_usage, list_plans, update_subscription_plan
+from .api_keys_service import authenticate_api_key, create_api_key, list_api_keys, revoke_api_key
 from .audit_service import audit_logs_to_csv, filter_audit_logs
 from .auth import create_access_token, get_current_user, hash_password, verify_password
 from sqlalchemy import text
@@ -19,10 +20,14 @@ from .invoice_metadata_service import update_invoice_metadata
 from .invoice_notes_service import create_invoice_note, list_invoice_notes
 from .invitation_service import accept_invitation, create_invitation, get_public_invitation
 from .middleware import InMemoryRateLimitMiddleware, RequestTimingMiddleware
-from .models import Alert, AuditLog, Invoice, InvoiceNote, Organization, OrganizationDocument, OrganizationIntegration, OrganizationInvitation, OrganizationMember, OrganizationNotificationSettings, OrganizationSubscription, PaymentTransaction, SavedView, User
+from .models import Alert, ApiKey, AuditLog, Invoice, InvoiceNote, Organization, OrganizationDocument, OrganizationIntegration, OrganizationInvitation, OrganizationMember, OrganizationNotificationSettings, OrganizationSubscription, PaymentTransaction, SavedView, User
 from .parsers import parse_csv_upload, parse_xml_upload, parse_zip_upload
 from .schemas import (
     AlertOut,
+    ApiInvoiceCreate,
+    ApiKeyCreate,
+    ApiKeyCreatedOut,
+    ApiKeyOut,
     AuditLogOut,
     BulkInvoiceActionIn,
     BulkInvoiceActionResult,
@@ -585,6 +590,113 @@ def add_organization_member(
     db.refresh(member)
     return member
 
+
+
+@app.get("/organizations/{org_id}/api-keys", response_model=list[ApiKeyOut])
+def get_api_keys(
+    org_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    organization = get_accessible_organization(db, org_id, current_user, require_owner=True)
+    return list_api_keys(db, organization)
+
+@app.post("/organizations/{org_id}/api-keys", response_model=ApiKeyCreatedOut)
+def create_organization_api_key(
+    org_id: int,
+    payload: ApiKeyCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    organization = get_accessible_organization(db, org_id, current_user, require_owner=True)
+    api_key, raw_key = create_api_key(
+        db,
+        organization=organization,
+        actor=current_user,
+        name=payload.name,
+        scopes=payload.scopes,
+    )
+    db.commit()
+    db.refresh(api_key)
+    return ApiKeyCreatedOut(
+        id=api_key.id,
+        organization_id=api_key.organization_id,
+        name=api_key.name,
+        key_prefix=api_key.key_prefix,
+        scopes=api_key.scopes,
+        status=api_key.status,
+        last_used_at=api_key.last_used_at,
+        created_at=api_key.created_at,
+        raw_key=raw_key,
+    )
+
+@app.post("/organizations/{org_id}/api-keys/{api_key_id}/revoke", response_model=ApiKeyOut)
+def revoke_organization_api_key(
+    org_id: int,
+    api_key_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    organization = get_accessible_organization(db, org_id, current_user, require_owner=True)
+
+    try:
+        api_key = revoke_api_key(db, organization, current_user, api_key_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+    db.commit()
+    db.refresh(api_key)
+    return api_key
+
+@app.post("/public-api/v1/invoices", response_model=InvoiceOut)
+def public_api_create_invoice(
+    payload: ApiInvoiceCreate,
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+    db: Session = Depends(get_db),
+):
+    try:
+        api_key = authenticate_api_key(db, x_api_key or "", required_scope="invoices:write")
+    except PermissionError as exc:
+        raise HTTPException(status_code=401, detail=str(exc))
+
+    organization = db.query(Organization).filter(Organization.id == api_key.organization_id).first()
+    if not organization:
+        raise HTTPException(status_code=404, detail="Organizația nu există.")
+
+    internal_status, due_date = compute_internal_status(payload.issue_date, payload.anaf_status)
+    invoice = Invoice(
+        organization_id=organization.id,
+        invoice_number=payload.invoice_number,
+        issue_date=payload.issue_date,
+        due_submission_date=due_date,
+        customer_name=payload.customer_name,
+        customer_cui=payload.customer_cui,
+        total_amount=payload.total_amount,
+        currency=payload.currency,
+        source="public_api",
+        internal_status=internal_status,
+        anaf_status=payload.anaf_status,
+        anaf_message=payload.anaf_message,
+        plain_explanation=explain_anaf_error(payload.anaf_message),
+    )
+    db.add(invoice)
+    db.flush()
+
+    create_alert_for_invoice(db, organization, invoice, notify_email=None)
+
+    write_audit_log(
+        db,
+        organization_id=organization.id,
+        actor_user_id=None,
+        action="public_api.invoice_created",
+        entity_type="invoice",
+        entity_id=invoice.id,
+        message=f"Factura {invoice.invoice_number} a fost creată prin API public.",
+    )
+
+    db.commit()
+    db.refresh(invoice)
+    return invoice
 
 @app.get("/organizations/{org_id}/work-queue", response_model=WorkQueueSummaryOut)
 def get_work_queue(

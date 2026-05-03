@@ -908,3 +908,36 @@ This version adds system diagnostics:
   ```txt
   docs/system-status.md
   ```
+
+
+---
+
+## v3.1 API keys
+
+This version adds API keys for external integrations:
+
+- API key table
+- key creation/list/revoke
+- public invoice creation API
+- frontend page:
+  ```txt
+  /api-keys
+  ```
+- audit events:
+  - `api_key.created`
+  - `api_key.revoked`
+  - `public_api.invoice_created`
+- tests for API key flow
+- documentation:
+  ```txt
+  docs/api-keys.md
+  ```
+
+### New endpoints
+
+```txt
+GET  /organizations/{org_id}/api-keys
+POST /organizations/{org_id}/api-keys
+POST /organizations/{org_id}/api-keys/{api_key_id}/revoke
+POST /public-api/v1/invoices
+```
