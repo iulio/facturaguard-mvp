@@ -514,3 +514,39 @@ def test_audit_summary_and_csv_export():
     assert csv_response.status_code == 200
     assert "action" in csv_response.text
     assert "organization.created" in csv_response.text
+
+
+def test_notification_settings_update():
+    _, token = register_user("settings-owner")
+
+    org_response = client.post(
+        "/organizations",
+        json={"name": "Settings Test SRL", "cui": "RO11993322"},
+        headers=auth_header(token),
+    )
+    assert org_response.status_code == 200
+    org_id = org_response.json()["id"]
+
+    get_response = client.get(
+        f"/organizations/{org_id}/notification-settings",
+        headers=auth_header(token),
+    )
+    assert get_response.status_code == 200
+    assert get_response.json()["email_alerts_enabled"] is True
+
+    update_response = client.put(
+        f"/organizations/{org_id}/notification-settings",
+        json={
+            "email_alerts_enabled": False,
+            "alert_email": "alerts@example.com",
+            "near_deadline_days": 5,
+            "daily_digest_enabled": True,
+        },
+        headers=auth_header(token),
+    )
+    assert update_response.status_code == 200, update_response.text
+    payload = update_response.json()
+    assert payload["email_alerts_enabled"] is False
+    assert payload["alert_email"] == "alerts@example.com"
+    assert payload["near_deadline_days"] == 5
+    assert payload["daily_digest_enabled"] is True

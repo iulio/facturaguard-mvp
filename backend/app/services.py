@@ -3,6 +3,7 @@ from datetime import date, datetime, timedelta
 from sqlalchemy.orm import Session
 from .models import Alert, Invoice, Organization
 from .notifier import send_email_notification
+from .notification_settings_service import get_alert_recipient, get_or_create_notification_settings, should_send_alert_email
 
 def add_business_days(start: date, business_days: int) -> date:
     current = start
@@ -74,8 +75,11 @@ def create_alert_for_invoice(db: Session, organization: Organization, invoice: I
     db.flush()
     if notify_email:
         try:
-            send_email_notification(notify_email, f"FacturaGuard: {alert.title}", f"{organization.name}\n\n{alert.message}")
-            alert.sent_email = True
+            notification_settings = get_or_create_notification_settings(db, organization, default_email=notify_email)
+            recipient = get_alert_recipient(notification_settings, notify_email)
+            if recipient and should_send_alert_email(notification_settings, alert.alert_type):
+                send_email_notification(recipient, f"FacturaGuard: {alert.title}", f"{organization.name}\n\n{alert.message}")
+                alert.sent_email = True
         except Exception as exc:
             print(f"Nu am putut trimite emailul: {exc}")
     return alert

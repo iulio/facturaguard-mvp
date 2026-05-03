@@ -644,3 +644,29 @@ This version adds audit visibility:
 GET /organizations/{org_id}/audit-summary
 GET /organizations/{org_id}/audit-logs/export.csv
 ```
+
+
+---
+
+## v2.2 notification preferences
+
+This version adds per-organization notification settings:
+
+- settings page:
+  ```txt
+  /settings
+  ```
+- configurable alert email
+- enable/disable email alerts
+- enable/disable alert categories
+- near-deadline threshold
+- daily digest flag for future digest feature
+- audit log when settings change
+- tests for notification settings
+
+### New endpoints
+
+```txt
+GET /organizations/{org_id}/notification-settings
+PUT /organizations/{org_id}/notification-settings
+```

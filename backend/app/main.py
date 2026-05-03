@@ -14,7 +14,7 @@ from .jobs import run_status_check, start_scheduler, stop_scheduler
 from .file_storage import read_document_content, store_upload_file
 from .invitation_service import accept_invitation, create_invitation, get_public_invitation
 from .middleware import InMemoryRateLimitMiddleware, RequestTimingMiddleware
-from .models import Alert, AuditLog, Invoice, Organization, OrganizationDocument, OrganizationIntegration, OrganizationInvitation, OrganizationMember, OrganizationSubscription, PaymentTransaction, User
+from .models import Alert, AuditLog, Invoice, Organization, OrganizationDocument, OrganizationIntegration, OrganizationInvitation, OrganizationMember, OrganizationNotificationSettings, OrganizationSubscription, PaymentTransaction, User
 from .parsers import parse_csv_upload, parse_xml_upload, parse_zip_upload
 from .schemas import (
     AlertOut,
@@ -35,6 +35,8 @@ from .schemas import (
     LoginIn,
     MessageOut,
     MonthlyReport,
+    NotificationSettingsOut,
+    NotificationSettingsUpdateIn,
     OnboardingStatusOut,
     NetopiaMockWebhookIn,
     PasswordChangeIn,
@@ -64,6 +66,7 @@ from .services import (
     create_alert_for_invoice,
     explain_anaf_error,
 )
+from .notification_settings_service import get_or_create_notification_settings, update_notification_settings
 from .onboarding_service import build_onboarding_status
 from .password_service import change_password, create_password_reset_token, reset_password_with_token
 from .payment_service import create_netopia_mock_checkout, process_netopia_mock_webhook
@@ -649,6 +652,44 @@ def netopia_mock_webhook(
     db.commit()
     db.refresh(transaction)
     return transaction
+
+
+@app.get("/organizations/{org_id}/notification-settings", response_model=NotificationSettingsOut)
+def get_notification_settings(
+    org_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    organization = get_accessible_organization(db, org_id, current_user, require_owner=True)
+    settings = get_or_create_notification_settings(db, organization, default_email=current_user.email)
+    db.commit()
+    db.refresh(settings)
+    return settings
+
+@app.put("/organizations/{org_id}/notification-settings", response_model=NotificationSettingsOut)
+def update_organization_notification_settings(
+    org_id: int,
+    payload: NotificationSettingsUpdateIn,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    organization = get_accessible_organization(db, org_id, current_user, require_owner=True)
+    settings = get_or_create_notification_settings(db, organization, default_email=current_user.email)
+    update_notification_settings(settings, payload.model_dump(exclude_unset=True))
+
+    write_audit_log(
+        db,
+        organization_id=org_id,
+        actor_user_id=current_user.id,
+        action="notification_settings.updated",
+        entity_type="organization_notification_settings",
+        entity_id=settings.id,
+        message="Setările de notificare au fost actualizate.",
+    )
+
+    db.commit()
+    db.refresh(settings)
+    return settings
 
 @app.get("/organizations/{org_id}/subscription", response_model=SubscriptionOut)
 def get_organization_subscription(

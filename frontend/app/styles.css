@@ -168,3 +168,21 @@ button,input{font:inherit}
   .marketing-hero h1{font-size:42px}
   .marketing-nav{margin-bottom:48px}
 }
+
+.setting-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+  padding:14px 0;
+  border-bottom:1px solid #e2e8f0;
+}
+.setting-row input[type="checkbox"]{
+  width:20px;
+  height:20px;
+}
+label{
+  display:block;
+  font-weight:700;
+  margin-top:14px;
+}

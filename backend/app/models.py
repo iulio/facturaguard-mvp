@@ -36,6 +36,7 @@ class Organization(Base):
     invitations = relationship("OrganizationInvitation", back_populates="organization", cascade="all, delete-orphan")
     documents = relationship("OrganizationDocument", back_populates="organization", cascade="all, delete-orphan")
     subscription = relationship("OrganizationSubscription", back_populates="organization", uselist=False, cascade="all, delete-orphan")
+    notification_settings = relationship("OrganizationNotificationSettings", back_populates="organization", uselist=False, cascade="all, delete-orphan")
 
 class OrganizationMember(Base):
     __tablename__ = "organization_members"
@@ -203,3 +204,21 @@ class PaymentTransaction(Base):
     raw_payload: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     paid_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class OrganizationNotificationSettings(Base):
+    __tablename__ = "organization_notification_settings"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    organization_id: Mapped[int] = mapped_column(ForeignKey("organizations.id"), unique=True, index=True)
+    email_alerts_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    alert_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    send_rejected_alerts: Mapped[bool] = mapped_column(Boolean, default=True)
+    send_overdue_alerts: Mapped[bool] = mapped_column(Boolean, default=True)
+    send_near_deadline_alerts: Mapped[bool] = mapped_column(Boolean, default=True)
+    near_deadline_days: Mapped[int] = mapped_column(Integer, default=2)
+    daily_digest_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    organization = relationship("Organization", back_populates="notification_settings")

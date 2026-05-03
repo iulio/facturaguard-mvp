@@ -343,3 +343,29 @@ class AuditSummaryOut(BaseModel):
     by_action: list[dict]
     by_entity_type: list[dict]
     recent_events: list[AuditLogOut]
+
+
+class NotificationSettingsOut(BaseModel):
+    id: int
+    organization_id: int
+    email_alerts_enabled: bool
+    alert_email: str | None = None
+    send_rejected_alerts: bool
+    send_overdue_alerts: bool
+    send_near_deadline_alerts: bool
+    near_deadline_days: int
+    daily_digest_enabled: bool
+    updated_at: datetime
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class NotificationSettingsUpdateIn(BaseModel):
+    email_alerts_enabled: bool | None = None
+    alert_email: EmailStr | None = None
+    send_rejected_alerts: bool | None = None
+    send_overdue_alerts: bool | None = None
+    send_near_deadline_alerts: bool | None = None
+    near_deadline_days: int | None = None
+    daily_digest_enabled: bool | None = None
