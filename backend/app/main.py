@@ -1408,21 +1408,6 @@ def create_netopia_mock_checkout_session(
     db.commit()
     db.refresh(transaction)
     return transaction
-
-@app.get("/organizations/{org_id}/billing/transactions", response_model=list[CheckoutSessionOut])
-def list_payment_transactions(
-    org_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    get_accessible_organization(db, org_id, current_user, require_owner=True)
-    return (
-        db.query(PaymentTransaction)
-        .filter(PaymentTransaction.organization_id == org_id)
-        .order_by(PaymentTransaction.created_at.desc())
-        .all()
-    )
-
 @app.post("/billing/netopia-mock/webhook", response_model=CheckoutSessionOut)
 def netopia_mock_webhook(
     payload: NetopiaMockWebhookIn,

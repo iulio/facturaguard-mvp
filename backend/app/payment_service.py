@@ -273,6 +273,36 @@ def extract_netopia_payment_id(response_payload: dict) -> str | None:
             return str(candidate)
     return None
 
+
+def extract_netopia_provider_status(response_payload: dict, fallback: str = "started") -> str:
+    candidates = [
+        response_payload.get("status"),
+        response_payload.get("orderStatus"),
+        response_payload.get("paymentStatus"),
+        response_payload.get("statusText"),
+    ]
+
+    payment = response_payload.get("payment")
+    if isinstance(payment, dict):
+        candidates.extend([
+            payment.get("status"),
+            payment.get("statusText"),
+            payment.get("paymentStatus"),
+        ])
+
+    order = response_payload.get("order")
+    if isinstance(order, dict):
+        candidates.extend([
+            order.get("status"),
+            order.get("orderStatus"),
+        ])
+
+    for candidate in candidates:
+        if candidate is not None and str(candidate).strip():
+            return str(candidate)
+
+    return fallback
+
 def create_netopia_checkout(
     db: Session,
     organization: Organization,
@@ -327,7 +357,7 @@ def create_netopia_checkout(
         provider_session_id=order_id,
         provider_order_id=order_id,
         provider_payment_id=payment_id,
-        provider_status=str(response_payload.get("status") or response_payload.get("payment", {}).get("status") if isinstance(response_payload.get("payment"), dict) else "started"),
+        provider_status=extract_netopia_provider_status(response_payload, fallback="started"),
         plan_code=plan.code,
         amount_eur=plan.monthly_price_eur,
         currency=settings.netopia_currency,
@@ -647,10 +677,7 @@ def check_netopia_transaction_status(
         raise RuntimeError(f"NETOPIA status check a eșuat: HTTP {response.status_code} - {raw_text[:500]}")
 
     normalized_status = normalize_netopia_status(response_payload)
-    provider_status = str(
-        response_payload.get("status")
-        or response_payload.get("payment", {}).get("status") if isinstance(response_payload.get("payment"), dict) else normalized_status
-    )
+    provider_status = extract_netopia_provider_status(response_payload, fallback=normalized_status)
 
     transaction.provider_status = provider_status
     transaction.raw_payload = json.dumps(

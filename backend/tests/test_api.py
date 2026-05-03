@@ -1248,3 +1248,12 @@ def test_billing_transactions_list_and_mock_status_check():
     payload = status_response.json()
     assert payload["transaction_id"] == transaction_id
     assert payload["changed"] is False
+
+
+def test_billing_transactions_route_is_registered_once():
+    matching_routes = [
+        route
+        for route in app.routes
+        if getattr(route, "path", None) == "/organizations/{org_id}/billing/transactions"
+    ]
+    assert len(matching_routes) == 1

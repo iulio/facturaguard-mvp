@@ -1466,3 +1466,22 @@ This version adds manual NETOPIA payment reconciliation:
   ```txt
   docs/netopia-status-reconciliation.md
   ```
+
+
+---
+
+## v3.18.1 CI fix
+
+This patch fixes the v3.18 backend CI issue:
+
+- removes duplicate route:
+  ```txt
+  GET /organizations/{org_id}/billing/transactions
+  ```
+- adds regression test for route uniqueness
+- hardens NETOPIA provider status extraction
+- removes duplicate response key in status reconciliation
+- documentation:
+  ```txt
+  docs/ci-fix-v3181.md
+  ```
