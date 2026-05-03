@@ -816,3 +816,33 @@ This version adds collaboration notes on invoices:
 GET  /organizations/{org_id}/invoices/{invoice_id}/notes
 POST /organizations/{org_id}/invoices/{invoice_id}/notes
 ```
+
+
+---
+
+## v2.8 invoice tags and priority
+
+This version adds operational invoice metadata:
+
+- tags
+- priority
+- optional assignee user id
+- frontend page:
+  ```txt
+  /invoice-metadata
+  ```
+- audit event:
+  ```txt
+  invoice.metadata_updated
+  ```
+- tests for metadata updates
+- documentation:
+  ```txt
+  docs/invoice-metadata.md
+  ```
+
+### New endpoint
+
+```txt
+PUT /organizations/{org_id}/invoices/{invoice_id}/metadata
+```

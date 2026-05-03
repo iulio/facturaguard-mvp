@@ -15,6 +15,7 @@ from .database import Base, engine, get_db
 from .jobs import run_status_check, start_scheduler, stop_scheduler
 from .digest_service import build_daily_digest, send_daily_digest
 from .file_storage import read_document_content, store_upload_file
+from .invoice_metadata_service import update_invoice_metadata
 from .invoice_notes_service import create_invoice_note, list_invoice_notes
 from .invitation_service import accept_invitation, create_invitation, get_public_invitation
 from .middleware import InMemoryRateLimitMiddleware, RequestTimingMiddleware
@@ -33,6 +34,8 @@ from .schemas import (
     DashboardSummary,
     DigestPreviewOut,
     DigestSendResult,
+    InvoiceMetadataOut,
+    InvoiceMetadataUpdateIn,
     InvoiceNoteCreate,
     InvoiceNoteOut,
     InvoiceOut,
@@ -618,6 +621,41 @@ def bulk_invoice_action(
     db.commit()
     return result
 
+
+
+@app.put("/organizations/{org_id}/invoices/{invoice_id}/metadata", response_model=InvoiceMetadataOut)
+def update_invoice_metadata_endpoint(
+    org_id: int,
+    invoice_id: int,
+    payload: InvoiceMetadataUpdateIn,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    organization = get_accessible_organization(db, org_id, current_user, require_write=True)
+    invoice = (
+        db.query(Invoice)
+        .filter(Invoice.id == invoice_id, Invoice.organization_id == org_id)
+        .first()
+    )
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Factura nu a fost găsită.")
+
+    try:
+        updated = update_invoice_metadata(
+            db,
+            organization=organization,
+            invoice=invoice,
+            actor=current_user,
+            tags=payload.tags,
+            priority=payload.priority,
+            assignee_user_id=payload.assignee_user_id,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    db.commit()
+    db.refresh(updated)
+    return updated
 
 @app.get("/organizations/{org_id}/invoices/{invoice_id}/notes", response_model=list[InvoiceNoteOut])
 def get_invoice_notes(

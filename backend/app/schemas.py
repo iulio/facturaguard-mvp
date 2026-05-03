@@ -67,6 +67,9 @@ class InvoiceOut(BaseModel):
     anaf_status: str
     anaf_message: str | None = None
     plain_explanation: str | None = None
+    tags: str | None = None
+    priority: str = "normal"
+    assignee_user_id: int | None = None
     anaf_upload_id: str | None = None
     last_synced_at: datetime | None = None
     created_at: datetime
@@ -456,6 +459,21 @@ class InvoiceNoteOut(BaseModel):
     body: str
     is_internal: bool
     created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class InvoiceMetadataUpdateIn(BaseModel):
+    tags: str | None = None
+    priority: str | None = None
+    assignee_user_id: int | None = None
+
+class InvoiceMetadataOut(BaseModel):
+    id: int
+    tags: str | None = None
+    priority: str
+    assignee_user_id: int | None = None
 
     class Config:
         from_attributes = True

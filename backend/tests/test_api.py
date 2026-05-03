@@ -743,3 +743,33 @@ def test_invoice_notes_flow():
     )
     assert list_notes.status_code == 200
     assert len(list_notes.json()) >= 1
+
+
+def test_invoice_metadata_update():
+    _, token = register_user("metadata-owner")
+
+    org_response = client.post(
+        "/organizations",
+        json={"name": "Metadata Test SRL", "cui": "RO66778899"},
+        headers=auth_header(token),
+    )
+    assert org_response.status_code == 200
+    org_id = org_response.json()["id"]
+
+    upload_response = client.post(
+        f"/organizations/{org_id}/invoices/upload",
+        files={"file": ("metadata.csv", "invoice_number,issue_date,customer_name,customer_cui,total_amount\nMETA-1,2026-04-27,Client,RO1,100\n", "text/csv")},
+        headers=auth_header(token),
+    )
+    assert upload_response.status_code == 200, upload_response.text
+    invoice_id = upload_response.json()[0]["id"]
+
+    update_response = client.put(
+        f"/organizations/{org_id}/invoices/{invoice_id}/metadata",
+        json={"tags": "urgent, client-important", "priority": "urgent"},
+        headers=auth_header(token),
+    )
+    assert update_response.status_code == 200, update_response.text
+    payload = update_response.json()
+    assert payload["tags"] == "urgent,client-important"
+    assert payload["priority"] == "urgent"
