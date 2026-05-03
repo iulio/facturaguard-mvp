@@ -586,3 +586,35 @@ This version adds first-run onboarding:
   ```txt
   docs/onboarding.md
   ```
+
+
+---
+
+## v2.0 release polish
+
+This version adds release-readiness tooling and documentation:
+
+- demo seed script:
+  ```bash
+  make seed-demo
+  ```
+- smoke test:
+  ```bash
+  make smoke
+  ```
+- backend compile check in CI
+- QA checklist:
+  ```txt
+  docs/qa-checklist.md
+  ```
+- release notes:
+  ```txt
+  docs/release-notes.md
+  ```
+
+### Demo login after seeding
+
+```txt
+demo@facturaguard.local
+DemoPassword123!
+```

@@ -23,3 +23,10 @@ migrate:
 
 revision:
 	cd backend && alembic revision --autogenerate -m "$(m)"
+
+
+seed-demo:
+	cd backend && python scripts/seed_demo.py
+
+smoke:
+	cd backend && python scripts/smoke_test.py http://localhost:8000
