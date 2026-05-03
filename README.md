@@ -846,3 +846,14 @@ This version adds operational invoice metadata:
 ```txt
 PUT /organizations/{org_id}/invoices/{invoice_id}/metadata
 ```
+
+
+---
+
+## v2.8.1 CI fix
+
+Fixes SQLite-compatible Alembic migration for invoice metadata.
+
+The migration `0011_invoice_metadata.py` now adds `assignee_user_id` as a nullable integer column without an inline foreign-key constraint, because SQLite cannot add FK constraints through `ALTER TABLE` in the CI migration check.
+
+The SQLAlchemy model still keeps the application-level field.

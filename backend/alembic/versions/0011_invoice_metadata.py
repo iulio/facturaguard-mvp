@@ -17,7 +17,10 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
     op.add_column("invoices", sa.Column("tags", sa.String(length=500), nullable=True))
     op.add_column("invoices", sa.Column("priority", sa.String(length=30), nullable=False, server_default="normal"))
-    op.add_column("invoices", sa.Column("assignee_user_id", sa.Integer(), sa.ForeignKey("users.id"), nullable=True))
+    # SQLite, used by CI, does not support adding a FK constraint via ALTER TABLE.
+    # Keep the application-level relationship in SQLAlchemy models, but add the
+    # column without a DB-level FK in this migration for cross-dialect compatibility.
+    op.add_column("invoices", sa.Column("assignee_user_id", sa.Integer(), nullable=True))
 
 def downgrade() -> None:
     op.drop_column("invoices", "assignee_user_id")
