@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
 from .access import get_accessible_organization, write_audit_log
+from .bulk_actions_service import run_bulk_invoice_action
 from .client_portal_service import get_client_portal_detail, get_client_portal_organizations
 from .billing import assert_can_create_organization, assert_can_import_invoices, assert_can_store_document, get_or_create_subscription, get_usage, list_plans, update_subscription_plan
 from .audit_service import audit_logs_to_csv, filter_audit_logs
@@ -21,6 +22,8 @@ from .parsers import parse_csv_upload, parse_xml_upload, parse_zip_upload
 from .schemas import (
     AlertOut,
     AuditLogOut,
+    BulkInvoiceActionIn,
+    BulkInvoiceActionResult,
     AuditSummaryOut,
     CheckoutCreateIn,
     ClientPortalOrganizationDetailOut,
@@ -587,6 +590,30 @@ def organization_dashboard(
         overdue=sum(1 for i in invoices if i.internal_status == "overdue"),
         open_alerts=open_alerts,
     )
+
+
+@app.post("/organizations/{org_id}/invoices/bulk-action", response_model=BulkInvoiceActionResult)
+def bulk_invoice_action(
+    org_id: int,
+    payload: BulkInvoiceActionIn,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    organization = get_accessible_organization(db, org_id, current_user, require_write=True)
+
+    try:
+        result = run_bulk_invoice_action(
+            db,
+            organization=organization,
+            actor=current_user,
+            invoice_ids=payload.invoice_ids,
+            action=payload.action,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    db.commit()
+    return result
 
 @app.get("/organizations/{org_id}/invoices", response_model=list[InvoiceOut])
 def list_invoices(

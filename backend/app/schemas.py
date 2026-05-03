@@ -429,3 +429,16 @@ class SavedViewOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class BulkInvoiceActionIn(BaseModel):
+    invoice_ids: list[int]
+    action: str
+
+class BulkInvoiceActionResult(BaseModel):
+    organization_id: int
+    action: str
+    requested: int
+    processed: int
+    skipped: int
+    message: str

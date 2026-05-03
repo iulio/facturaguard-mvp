@@ -14,6 +14,8 @@ export default function Home() {
   const [active, setActive] = useState<number | null>(null);
   const [summary, setSummary] = useState<any>(null);
   const [invoices, setInvoices] = useState<any[]>([]);
+  const [selectedInvoiceIds, setSelectedInvoiceIds] = useState<number[]>([]);
+  const [bulkAction, setBulkAction] = useState("sync_status");
   const [alerts, setAlerts] = useState<any[]>([]);
   const [portfolio, setPortfolio] = useState<any>(null);
   const [portfolioSearch, setPortfolioSearch] = useState("");
@@ -226,6 +228,23 @@ export default function Home() {
     if (!active) return;
     const data = await apiFetch("/jobs/run-status-check", { method: "POST" });
     setMsg(`Verificare rulată: ${data.checked} facturi, ${data.changed} statusuri schimbate.`);
+    await refresh(active);
+  }
+
+  function toggleInvoiceSelection(id: number) {
+    setSelectedInvoiceIds((current) =>
+      current.includes(id) ? current.filter((item) => item !== id) : [...current, id]
+    );
+  }
+
+  async function runBulkAction() {
+    if (!active || selectedInvoiceIds.length === 0) return;
+    const result = await apiFetch(`/organizations/${active}/invoices/bulk-action`, {
+      method: "POST",
+      body: JSON.stringify({ invoice_ids: selectedInvoiceIds, action: bulkAction }),
+    });
+    setMsg(result.message);
+    setSelectedInvoiceIds([]);
     await refresh(active);
   }
 

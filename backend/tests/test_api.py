@@ -674,3 +674,37 @@ def test_saved_views_crud():
         headers=auth_header(token),
     )
     assert delete_response.status_code == 200
+
+
+def test_bulk_invoice_action_sync_and_resolve_alerts():
+    _, token = register_user("bulk-owner")
+
+    org_response = client.post(
+        "/organizations",
+        json={"name": "Bulk Test SRL", "cui": "RO12344321"},
+        headers=auth_header(token),
+    )
+    assert org_response.status_code == 200
+    org_id = org_response.json()["id"]
+
+    upload_response = client.post(
+        f"/organizations/{org_id}/invoices/upload",
+        files={"file": ("bulk.csv", "invoice_number,issue_date,customer_name,customer_cui,total_amount,anaf_status,anaf_message\nBULK-1,2026-04-27,Client,RO1,100,rejected,CUI invalid\n", "text/csv")},
+        headers=auth_header(token),
+    )
+    assert upload_response.status_code == 200, upload_response.text
+    invoice_id = upload_response.json()[0]["id"]
+
+    bulk_response = client.post(
+        f"/organizations/{org_id}/invoices/bulk-action",
+        json={"invoice_ids": [invoice_id], "action": "resolve_related_alerts"},
+        headers=auth_header(token),
+    )
+    assert bulk_response.status_code == 200, bulk_response.text
+    assert bulk_response.json()["processed"] == 1
+
+    alerts_response = client.get(
+        f"/organizations/{org_id}/alerts?status=open",
+        headers=auth_header(token),
+    )
+    assert alerts_response.status_code == 200

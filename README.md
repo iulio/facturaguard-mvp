@@ -756,3 +756,32 @@ POST   /saved-views
 PUT    /saved-views/{saved_view_id}
 DELETE /saved-views/{saved_view_id}
 ```
+
+
+---
+
+## v2.6 bulk invoice actions
+
+This version adds bulk actions for invoices:
+
+- select invoices in the dashboard table
+- apply bulk action:
+  - `sync_status`
+  - `mark_unsent`
+  - `mark_pending`
+  - `resolve_related_alerts`
+- audit event:
+  ```txt
+  bulk_invoice_action.executed
+  ```
+- tests for bulk actions
+- documentation:
+  ```txt
+  docs/bulk-actions.md
+  ```
+
+### New endpoint
+
+```txt
+POST /organizations/{org_id}/invoices/bulk-action
+```
