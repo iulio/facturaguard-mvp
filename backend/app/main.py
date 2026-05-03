@@ -1,10 +1,18 @@
 from contextlib import asynccontextmanager
+import json
 from datetime import datetime
-from fastapi import Depends, FastAPI, File, Header, HTTPException, Response, UploadFile
+from fastapi import Depends, FastAPI, File, Header, HTTPException, Request, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.trustedhost import TrustedHostMiddleware
+from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
 from .access import get_accessible_organization, write_audit_log
+from .anaf_oauth_service import build_anaf_authorization_url, disconnect_anaf, get_anaf_config_status, handle_anaf_callback, list_anaf_authorizations
+from .anaf_upload_service import upload_invoice_xml_to_anaf
+from .anaf_status_service import check_invoice_status_from_anaf
+from .anaf_download_service import download_anaf_response_zip
+from .anaf_response_parser import parse_and_apply_anaf_response
 from .bulk_actions_service import run_bulk_invoice_action
 from .client_portal_service import get_client_portal_detail, get_client_portal_organizations
 from .billing import assert_can_create_organization, assert_can_import_invoices, assert_can_store_document, get_or_create_subscription, get_usage, list_plans, update_subscription_plan
@@ -20,10 +28,17 @@ from .invoice_metadata_service import update_invoice_metadata
 from .invoice_notes_service import create_invoice_note, list_invoice_notes
 from .invitation_service import accept_invitation, create_invitation, get_public_invitation
 from .middleware import InMemoryRateLimitMiddleware, RequestTimingMiddleware
-from .models import Alert, ApiKey, AuditLog, Invoice, InvoiceNote, Organization, OrganizationDocument, OrganizationIntegration, OrganizationInvitation, OrganizationMember, OrganizationNotificationSettings, OrganizationSubscription, PaymentTransaction, SavedView, User
+from .models import Alert, AnafAuthorization, ApiKey, AuditLog, Invoice, InvoiceNote, Organization, OrganizationDocument, OrganizationIntegration, OrganizationInvitation, OrganizationMember, OrganizationNotificationSettings, OrganizationSubscription, PaymentTransaction, SavedView, User
 from .parsers import parse_csv_upload, parse_xml_upload, parse_zip_upload
 from .schemas import (
     AlertOut,
+    AnafAuthorizationOut,
+    AnafConfigCheckOut,
+    AnafConnectOut,
+    AnafDownloadResponseResult,
+    AnafParsedResponseOut,
+    AnafStatusCheckResult,
+    AnafUploadDraftResult,
     ApiInvoiceCreate,
     ApiKeyCreate,
     ApiKeyCreatedOut,
@@ -61,7 +76,10 @@ from .schemas import (
     NotificationSettingsOut,
     NotificationSettingsUpdateIn,
     OnboardingStatusOut,
+    NetopiaConfigCheckOut,
     NetopiaMockWebhookIn,
+    NetopiaStatusCheckOut,
+    NetopiaWebhookResultOut,
     PasswordChangeIn,
     PasswordResetConfirmIn,
     PasswordResetRequestIn,
@@ -82,8 +100,10 @@ from .schemas import (
     SystemStatusOut,
     UsageOut,
     UserOut,
+    UblPreviewOut,
     WorkQueueSummaryOut,
 )
+from .security import add_security_headers, parse_csv_setting
 from .settings import get_settings
 from .services import (
     build_monthly_report,
@@ -94,13 +114,14 @@ from .services import (
 from .notification_settings_service import get_or_create_notification_settings, update_notification_settings
 from .onboarding_service import build_onboarding_status
 from .password_service import change_password, create_password_reset_token, reset_password_with_token
-from .payment_service import create_netopia_mock_checkout, process_netopia_mock_webhook
+from .payment_service import check_netopia_transaction_status, create_netopia_checkout, create_netopia_mock_checkout, get_netopia_v2_config_status, list_organization_payment_transactions, process_netopia_mock_webhook, process_netopia_v2_webhook
 from .portfolio_service import build_portfolio_summary
 from .report_service import generate_invoices_csv, generate_monthly_report_pdf
 from .saved_views_service import create_saved_view, delete_saved_view, list_saved_views, update_saved_view
 from .work_queue_service import build_work_queue
 from .system_status_service import build_system_status
 from .template_service import CSV_TEMPLATE, XML_TEMPLATE, build_templates_zip
+from .ubl_generator import build_basic_ubl_invoice_xml, build_ubl_filename
 from .sync_service import (
     get_or_create_anaf_integration,
     sync_invoice_status,
@@ -121,6 +142,17 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title=settings.app_name, version=settings.app_version, lifespan=lifespan)
 
+trusted_hosts = parse_csv_setting(settings.trusted_hosts)
+if trusted_hosts and trusted_hosts != ["*"]:
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=trusted_hosts)
+
+@app.middleware("http")
+async def security_headers_middleware(request, call_next):
+    response = await call_next(request)
+    if settings.security_headers_enabled:
+        add_security_headers(response)
+    return response
+
 app.add_middleware(RequestTimingMiddleware)
 app.add_middleware(InMemoryRateLimitMiddleware)
 
@@ -138,6 +170,66 @@ def root():
 
 
 
+
+
+@app.get("/organizations/{org_id}/integrations/anaf/config-check", response_model=AnafConfigCheckOut)
+def get_anaf_config_check(
+    org_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    get_accessible_organization(db, org_id, current_user, require_owner=True)
+    return get_anaf_config_status()
+
+@app.get("/organizations/{org_id}/integrations/anaf/connect", response_model=AnafConnectOut)
+def connect_anaf_real(
+    org_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    organization = get_accessible_organization(db, org_id, current_user, require_owner=True)
+
+    try:
+        payload = build_anaf_authorization_url(db, organization, current_user)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    db.commit()
+    return payload
+
+@app.get("/organizations/{org_id}/integrations/anaf/authorizations", response_model=list[AnafAuthorizationOut])
+def get_anaf_authorizations(
+    org_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    organization = get_accessible_organization(db, org_id, current_user, require_owner=True)
+    return list_anaf_authorizations(db, organization)
+
+@app.post("/organizations/{org_id}/integrations/anaf/disconnect", response_model=list[AnafAuthorizationOut])
+def disconnect_anaf_real(
+    org_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    organization = get_accessible_organization(db, org_id, current_user, require_owner=True)
+    authorizations = disconnect_anaf(db, organization, current_user)
+    db.commit()
+    return authorizations
+
+@app.get("/integrations/anaf/oauth/callback")
+def anaf_oauth_callback(
+    code: str,
+    state: str,
+    db: Session = Depends(get_db),
+):
+    try:
+        handle_anaf_callback(db, code=code, state=state)
+        db.commit()
+        return RedirectResponse(f"{settings.frontend_base_url}/settings?anaf=connected")
+    except Exception as exc:
+        db.rollback()
+        return RedirectResponse(f"{settings.frontend_base_url}/settings?anaf=error")
 
 @app.get("/templates/invoices.csv")
 def download_csv_template():
@@ -828,6 +920,212 @@ def update_invoice_metadata_endpoint(
     db.refresh(updated)
     return updated
 
+
+
+
+
+
+@app.post("/organizations/{org_id}/invoices/{invoice_id}/anaf-parse-response", response_model=AnafParsedResponseOut)
+def parse_invoice_anaf_response(
+    org_id: int,
+    invoice_id: int,
+    document_id: int | None = None,
+    apply_result: bool = True,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    organization = get_accessible_organization(db, org_id, current_user, require_write=True)
+    invoice = (
+        db.query(Invoice)
+        .filter(Invoice.id == invoice_id, Invoice.organization_id == org_id)
+        .first()
+    )
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Factura nu a fost găsită.")
+
+    target_document_id = document_id or invoice.anaf_response_document_id
+    if not target_document_id:
+        raise HTTPException(status_code=400, detail="Nu există document ANAF de parsat pentru această factură.")
+
+    document = (
+        db.query(OrganizationDocument)
+        .filter(
+            OrganizationDocument.id == target_document_id,
+            OrganizationDocument.organization_id == org_id,
+        )
+        .first()
+    )
+    if not document:
+        raise HTTPException(status_code=404, detail="Documentul ANAF nu a fost găsit.")
+
+    try:
+        content = read_document_content(document)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+    parsed = parse_and_apply_anaf_response(
+        db,
+        organization=organization,
+        invoice=invoice,
+        document=document,
+        content=content,
+        actor=current_user,
+        apply_result=apply_result,
+    )
+    db.commit()
+
+    return AnafParsedResponseOut(
+        invoice_id=invoice.id,
+        invoice_number=invoice.invoice_number,
+        document_id=document.id,
+        applied=apply_result,
+        file_count=parsed["file_count"],
+        xml_file_count=parsed["xml_file_count"],
+        summary_status=parsed["summary_status"],
+        summary_message=parsed["summary_message"],
+        files=parsed["files"],
+    )
+
+@app.post("/organizations/{org_id}/invoices/{invoice_id}/anaf-download-response", response_model=AnafDownloadResponseResult)
+def download_invoice_anaf_response_draft(
+    org_id: int,
+    invoice_id: int,
+    message_id: str | None = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    organization = get_accessible_organization(db, org_id, current_user, require_write=True)
+    invoice = (
+        db.query(Invoice)
+        .filter(Invoice.id == invoice_id, Invoice.organization_id == org_id)
+        .first()
+    )
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Factura nu a fost găsită.")
+
+    result = download_anaf_response_zip(
+        db,
+        organization=organization,
+        invoice=invoice,
+        actor=current_user,
+        message_id=message_id,
+    )
+    db.commit()
+    return result
+
+@app.post("/organizations/{org_id}/invoices/{invoice_id}/anaf-status-check", response_model=AnafStatusCheckResult)
+def check_invoice_anaf_status_draft(
+    org_id: int,
+    invoice_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    organization = get_accessible_organization(db, org_id, current_user, require_write=True)
+    invoice = (
+        db.query(Invoice)
+        .filter(Invoice.id == invoice_id, Invoice.organization_id == org_id)
+        .first()
+    )
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Factura nu a fost găsită.")
+
+    result = check_invoice_status_from_anaf(
+        db,
+        organization=organization,
+        invoice=invoice,
+        actor=current_user,
+    )
+    db.commit()
+    return result
+
+@app.post("/organizations/{org_id}/invoices/{invoice_id}/anaf-upload-draft", response_model=AnafUploadDraftResult)
+def upload_invoice_to_anaf_draft(
+    org_id: int,
+    invoice_id: int,
+    dry_run: bool = False,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    organization = get_accessible_organization(db, org_id, current_user, require_write=True)
+    invoice = (
+        db.query(Invoice)
+        .filter(Invoice.id == invoice_id, Invoice.organization_id == org_id)
+        .first()
+    )
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Factura nu a fost găsită.")
+
+    result = upload_invoice_xml_to_anaf(
+        db,
+        organization=organization,
+        invoice=invoice,
+        actor=current_user,
+        dry_run=dry_run,
+    )
+    db.commit()
+    return result
+
+@app.get("/organizations/{org_id}/invoices/{invoice_id}/ubl-preview", response_model=UblPreviewOut)
+def preview_invoice_ubl(
+    org_id: int,
+    invoice_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    organization = get_accessible_organization(db, org_id, current_user)
+    invoice = (
+        db.query(Invoice)
+        .filter(Invoice.id == invoice_id, Invoice.organization_id == org_id)
+        .first()
+    )
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Factura nu a fost găsită.")
+
+    xml = build_basic_ubl_invoice_xml(invoice, organization)
+    return UblPreviewOut(
+        invoice_id=invoice.id,
+        invoice_number=invoice.invoice_number,
+        filename=build_ubl_filename(invoice),
+        xml=xml,
+        warning="XML skeleton pentru integrare. Validează cu ANAF înainte de producție.",
+    )
+
+@app.get("/organizations/{org_id}/invoices/{invoice_id}/ubl.xml")
+def download_invoice_ubl(
+    org_id: int,
+    invoice_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    organization = get_accessible_organization(db, org_id, current_user)
+    invoice = (
+        db.query(Invoice)
+        .filter(Invoice.id == invoice_id, Invoice.organization_id == org_id)
+        .first()
+    )
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Factura nu a fost găsită.")
+
+    xml = build_basic_ubl_invoice_xml(invoice, organization)
+    filename = build_ubl_filename(invoice)
+
+    write_audit_log(
+        db,
+        organization_id=org_id,
+        actor_user_id=current_user.id,
+        action="invoice.ubl_exported",
+        entity_type="invoice",
+        entity_id=invoice.id,
+        message=f"XML UBL exportat pentru factura {invoice.invoice_number}.",
+    )
+    db.commit()
+
+    return Response(
+        content=xml,
+        media_type="application/xml; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
 @app.get("/organizations/{org_id}/invoices/{invoice_id}/notes", response_model=list[InvoiceNoteOut])
 def get_invoice_notes(
     org_id: int,
@@ -984,6 +1282,112 @@ async def upload_invoices(
 
 
 
+
+
+
+@app.get("/organizations/{org_id}/billing/transactions", response_model=list[CheckoutSessionOut])
+def list_billing_transactions(
+    org_id: int,
+    limit: int = 50,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    organization = get_accessible_organization(db, org_id, current_user, require_owner=True)
+    return list_organization_payment_transactions(db, organization, limit=limit)
+
+@app.post("/organizations/{org_id}/billing/transactions/{transaction_id}/status-check", response_model=NetopiaStatusCheckOut)
+def check_billing_transaction_status(
+    org_id: int,
+    transaction_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    organization = get_accessible_organization(db, org_id, current_user, require_owner=True)
+
+    try:
+        result = check_netopia_transaction_status(
+            db,
+            organization=organization,
+            transaction_id=transaction_id,
+            actor=current_user,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except RuntimeError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    db.commit()
+    return result
+
+@app.get("/billing/netopia/config-check", response_model=NetopiaConfigCheckOut)
+def netopia_config_check():
+    return get_netopia_v2_config_status()
+
+@app.post("/organizations/{org_id}/billing/netopia/checkout", response_model=CheckoutSessionOut)
+def create_netopia_checkout_session(
+    org_id: int,
+    payload: CheckoutCreateIn,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    organization = get_accessible_organization(db, org_id, current_user, require_owner=True)
+
+    try:
+        transaction = create_netopia_checkout(db, organization, payload.plan_code, current_user)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except RuntimeError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    db.commit()
+    db.refresh(transaction)
+    return transaction
+
+@app.post("/billing/netopia/ipn", response_model=NetopiaWebhookResultOut)
+async def netopia_v2_ipn(
+    request: Request,
+    x_netopia_signature: str | None = Header(default=None, alias="X-NETOPIA-Signature"),
+    x_netopia_secret: str | None = Header(default=None, alias="X-NETOPIA-Secret"),
+    db: Session = Depends(get_db),
+):
+    raw_body = await request.body()
+    try:
+        payload = json.loads(raw_body.decode("utf-8"))
+    except Exception:
+        raise HTTPException(status_code=400, detail="Payload JSON invalid.")
+
+    try:
+        transaction = process_netopia_v2_webhook(
+            db,
+            payload=payload,
+            signature_header=x_netopia_signature,
+            shared_secret=x_netopia_secret,
+            raw_body=raw_body,
+        )
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc))
+
+    db.commit()
+
+    if not transaction:
+        return NetopiaWebhookResultOut(
+            transaction_id=None,
+            provider="netopia_v2",
+            provider_order_id=None,
+            provider_payment_id=None,
+            status="ignored",
+            message="IPN primit, dar nu există tranzacție locală asociată.",
+        )
+
+    db.refresh(transaction)
+    return NetopiaWebhookResultOut(
+        transaction_id=transaction.id,
+        provider=transaction.provider,
+        provider_order_id=transaction.provider_order_id,
+        provider_payment_id=transaction.provider_payment_id,
+        status=transaction.status,
+        message="IPN NETOPIA procesat.",
+    )
 
 @app.post("/organizations/{org_id}/billing/netopia-mock/checkout", response_model=CheckoutSessionOut)
 def create_netopia_mock_checkout_session(

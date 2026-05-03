@@ -170,11 +170,11 @@ export default function Home() {
 
   async function changePlan(planCode: string) {
     if (!active) return;
-    const checkout = await apiFetch(`/organizations/${active}/billing/netopia-mock/checkout`, {
+    const checkout = await apiFetch(`/organizations/${active}/billing/netopia/checkout`, {
       method: "POST",
       body: JSON.stringify({ plan_code: planCode }),
     });
-    setMsg(`Checkout creat pentru ${planCode}. Redirecționare către NETOPIA mock...`);
+    setMsg(`Checkout creat pentru ${planCode}. Redirecționare către NETOPIA...`);
     if (checkout.checkout_url) {
       window.location.href = checkout.checkout_url;
     }
@@ -314,7 +314,7 @@ export default function Home() {
     <main className="container">
       <div className="header">
         <div><h1>FacturaGuard Dashboard</h1><p>MVP e-Factura monitorizare.</p></div>
-        <div style={{ display: "flex", gap: 8 }}><a className="btn secondary" href="/developer">Developer</a><a className="btn secondary" href="/api-keys">API keys</a><a className="btn secondary" href="/system-status">Status</a><a className="btn secondary" href="/work-queue">Work queue</a><a className="btn secondary" href="/invoice-metadata">Tags/Prioritate</a><a className="btn secondary" href="/invoice-notes">Note facturi</a><a className="btn secondary" href="/client-portal">Portal client</a><a className="btn secondary" href="/settings">Setări</a><a className="btn secondary" href="/audit">Audit</a><a className="btn secondary" href="/onboarding">Onboarding</a><button className="btn secondary" onClick={logout}><LogOut size={16} /> Logout</button></div>
+        <div style={{ display: "flex", gap: 8 }}><a className="btn secondary" href="/developer">Developer</a><a className="btn secondary" href="/ubl">UBL XML</a><a className="btn secondary" href="/integrations">Integrări</a><a className="btn secondary" href="/billing">Billing</a><a className="btn secondary" href="/api-keys">API keys</a><a className="btn secondary" href="/system-status">Status</a><a className="btn secondary" href="/work-queue">Work queue</a><a className="btn secondary" href="/invoice-metadata">Tags/Prioritate</a><a className="btn secondary" href="/invoice-notes">Note facturi</a><a className="btn secondary" href="/client-portal">Portal client</a><a className="btn secondary" href="/settings">Setări</a><a className="btn secondary" href="/audit">Audit</a><a className="btn secondary" href="/onboarding">Onboarding</a><button className="btn secondary" onClick={logout}><LogOut size={16} /> Logout</button></div>
       </div>
 
       {err && <p className="error">{err}</p>}
@@ -451,7 +451,7 @@ export default function Home() {
         <div className="header">
           <div>
             <h2>Billing & usage</h2>
-            <p>Plan curent: <b>{usage?.plan_code ?? "free"}</b>. Facturi luna curentă: {usage?.invoices_this_month ?? 0}/{usage?.max_invoices_per_month ?? "-"} · Documente: {usage?.documents_total ?? 0}/{usage?.max_documents ?? "-"}</p>
+            <p>Plan curent: <b>{usage?.plan_code ?? "one"}</b>. Facturi luna curentă: {usage?.invoices_this_month ?? 0}/{usage?.max_invoices_per_month ?? "-"} · Documente: {usage?.documents_total ?? 0}/{usage?.max_documents ?? "-"}</p>
           </div>
         </div>
         <div className="grid grid-4">

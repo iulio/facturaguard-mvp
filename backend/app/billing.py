@@ -15,14 +15,14 @@ class Plan:
     features: list[str]
 
 PLANS: dict[str, Plan] = {
-    "free": Plan(
-        code="free",
-        name="Free",
-        monthly_price_eur=0,
+    "one": Plan(
+        code="one",
+        name="One",
+        monthly_price_eur=5,
         max_organizations=1,
-        max_invoices_per_month=30,
+        max_invoices_per_month=50,
         max_documents=50,
-        features=["1 firmă", "30 facturi/lună", "CSV/XML upload", "alerte basic"],
+        features=["1 firmă", "50 facturi/lună", "CSV/XML upload", "alerte basic"],
     ),
     "starter": Plan(
         code="starter",
@@ -53,13 +53,21 @@ PLANS: dict[str, Plan] = {
     ),
 }
 
+LEGACY_PLAN_ALIASES = {
+    "free": "one",
+}
+
+def normalize_plan_code(plan_code: str) -> str:
+    return LEGACY_PLAN_ALIASES.get(plan_code, plan_code)
+
 def list_plans() -> list[dict]:
     return [plan.__dict__ for plan in PLANS.values()]
 
 def get_plan(plan_code: str) -> Plan:
-    if plan_code not in PLANS:
+    normalized_code = normalize_plan_code(plan_code)
+    if normalized_code not in PLANS:
         raise ValueError(f"Plan invalid: {plan_code}")
-    return PLANS[plan_code]
+    return PLANS[normalized_code]
 
 def get_or_create_subscription(db: Session, organization: Organization) -> OrganizationSubscription:
     subscription = (
@@ -72,7 +80,7 @@ def get_or_create_subscription(db: Session, organization: Organization) -> Organ
 
     subscription = OrganizationSubscription(
         organization_id=organization.id,
-        plan_code="free",
+        plan_code="one",
         status="active",
     )
     db.add(subscription)
@@ -80,9 +88,9 @@ def get_or_create_subscription(db: Session, organization: Organization) -> Organ
     return subscription
 
 def update_subscription_plan(db: Session, organization: Organization, plan_code: str) -> OrganizationSubscription:
-    get_plan(plan_code)
+    plan = get_plan(plan_code)
     subscription = get_or_create_subscription(db, organization)
-    subscription.plan_code = plan_code
+    subscription.plan_code = plan.code
     subscription.updated_at = datetime.utcnow()
     db.flush()
     return subscription
@@ -107,9 +115,14 @@ def get_usage(db: Session, organization: Organization) -> dict:
     plan = get_plan(subscription.plan_code)
     now = datetime.utcnow()
 
+    if subscription.plan_code != plan.code:
+        subscription.plan_code = plan.code
+        subscription.updated_at = datetime.utcnow()
+        db.flush()
+
     return {
         "organization_id": organization.id,
-        "plan_code": subscription.plan_code,
+        "plan_code": plan.code,
         "invoices_this_month": get_month_invoice_count(db, organization.id, now.year, now.month),
         "documents_total": get_document_count(db, organization.id),
         "max_invoices_per_month": plan.max_invoices_per_month,

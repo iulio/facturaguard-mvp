@@ -61,7 +61,7 @@ DemoPassword123!
 
 - Create organization.
 - Confirm it appears in portfolio.
-- Confirm subscription defaults to `free`.
+- Confirm subscription defaults to `one`.
 
 ### Uploads
 

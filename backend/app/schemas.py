@@ -71,6 +71,10 @@ class InvoiceOut(BaseModel):
     priority: str = "normal"
     assignee_user_id: int | None = None
     anaf_upload_id: str | None = None
+    anaf_download_id: str | None = None
+    anaf_response_document_id: int | None = None
+    anaf_last_checked_at: datetime | None = None
+    anaf_submission_environment: str | None = None
     last_synced_at: datetime | None = None
     created_at: datetime
 
@@ -311,6 +315,9 @@ class CheckoutSessionOut(BaseModel):
     organization_id: int
     provider: str
     provider_session_id: str
+    provider_order_id: str | None = None
+    provider_payment_id: str | None = None
+    provider_status: str | None = None
     plan_code: str
     amount_eur: float
     currency: str
@@ -536,3 +543,124 @@ class ApiInvoiceCreate(BaseModel):
     currency: str = "RON"
     anaf_status: str = "pending"
     anaf_message: str | None = None
+
+
+class AnafConnectOut(BaseModel):
+    authorization_url: str
+    state: str
+    mode: str
+
+class AnafConfigCheckOut(BaseModel):
+    mode: str
+    environment: str
+    auth_base: str
+    api_base: str
+    redirect_uri: str | None
+    configured: bool
+    missing_variables: list[str]
+
+class AnafAuthorizationOut(BaseModel):
+    id: int
+    organization_id: int
+    authorized_cif: str
+    token_type: str
+    expires_at: datetime | None = None
+    scope: str | None = None
+    status: str
+    created_at: datetime
+    updated_at: datetime
+    last_refresh_at: datetime | None = None
+
+    class Config:
+        from_attributes = True
+
+
+class UblPreviewOut(BaseModel):
+    invoice_id: int
+    invoice_number: str
+    filename: str
+    xml: str
+    warning: str
+
+
+class AnafUploadDraftResult(BaseModel):
+    invoice_id: int
+    invoice_number: str
+    environment: str
+    attempted: bool
+    uploaded: bool
+    anaf_upload_id: str | None = None
+    message: str
+    raw_response: str | None = None
+
+
+class AnafStatusCheckResult(BaseModel):
+    invoice_id: int
+    invoice_number: str
+    environment: str
+    attempted: bool
+    checked: bool
+    anaf_upload_id: str | None = None
+    anaf_status: str | None = None
+    internal_status: str | None = None
+    message: str
+    raw_response: str | None = None
+
+
+class AnafDownloadResponseResult(BaseModel):
+    invoice_id: int
+    invoice_number: str
+    environment: str
+    attempted: bool
+    downloaded: bool
+    anaf_download_id: str | None = None
+    document_id: int | None = None
+    filename: str | None = None
+    message: str
+    size_bytes: int | None = None
+
+
+class AnafParsedResponseOut(BaseModel):
+    invoice_id: int
+    invoice_number: str
+    document_id: int
+    applied: bool
+    file_count: int
+    xml_file_count: int
+    summary_status: str
+    summary_message: str
+    files: list[dict]
+
+
+class NetopiaConfigCheckOut(BaseModel):
+    provider: str
+    mode: str
+    base_url: str
+    configured: bool
+    missing_variables: list[str]
+    notify_url: str | None = None
+    redirect_url: str | None = None
+    cancel_url: str | None = None
+    currency: str
+
+class NetopiaWebhookResultOut(BaseModel):
+    transaction_id: int | None = None
+    provider: str
+    provider_order_id: str | None = None
+    provider_payment_id: str | None = None
+    status: str
+    message: str
+
+
+class NetopiaStatusCheckOut(BaseModel):
+    transaction_id: int
+    organization_id: int
+    provider: str
+    provider_order_id: str | None = None
+    provider_payment_id: str | None = None
+    previous_status: str
+    current_status: str
+    provider_status: str | None = None
+    changed: bool
+    message: str
+    raw_response: dict | None = None

@@ -470,7 +470,7 @@ Local storage remains the default for development.
 This version adds a SaaS billing/subscription skeleton:
 
 - static pricing plans:
-  - `free`
+  - `one`
   - `starter`
   - `pro`
   - `agency`
@@ -1048,3 +1048,421 @@ GET /templates/facturaguard-import-templates.zip
 ```
 
 No database migration is included in this version.
+
+
+---
+
+## v3.6 real ANAF connector skeleton
+
+This version prepares the real ANAF/SPV integration:
+
+- encrypted ANAF OAuth token storage
+- ANAF config variables
+- OAuth connect/callback endpoints
+- authorization list/disconnect endpoints
+- frontend page:
+  ```txt
+  /integrations
+  ```
+- RealAnafClient skeleton for:
+  - upload
+  - stareMesaj
+  - listaMesajeFactura
+  - descarcare
+- documentation:
+  ```txt
+  docs/anaf-real-connector.md
+  ```
+
+### New endpoints
+
+```txt
+GET  /organizations/{org_id}/integrations/anaf/config-check
+GET  /organizations/{org_id}/integrations/anaf/connect
+GET  /organizations/{org_id}/integrations/anaf/authorizations
+POST /organizations/{org_id}/integrations/anaf/disconnect
+GET  /integrations/anaf/oauth/callback
+```
+
+
+---
+
+## v3.7 UBL XML generator
+
+This version adds a basic UBL XML generator skeleton:
+
+- frontend page:
+  ```txt
+  /ubl
+  ```
+- XML preview endpoint
+- XML download endpoint
+- audit event:
+  ```txt
+  invoice.ubl_exported
+  ```
+- tests for preview/download
+- documentation:
+  ```txt
+  docs/ubl-generator.md
+  ```
+
+### New endpoints
+
+```txt
+GET /organizations/{org_id}/invoices/{invoice_id}/ubl-preview
+GET /organizations/{org_id}/invoices/{invoice_id}/ubl.xml
+```
+
+This is not production-valid CIUS-RO yet. Validate and complete the XML before real ANAF upload.
+
+
+---
+
+## v3.8 ANAF upload draft flow
+
+This version adds a draft ANAF upload flow:
+
+- backend upload-draft endpoint
+- dry-run mode
+- RealAnafClient upload wiring
+- frontend buttons in:
+  ```txt
+  /ubl
+  ```
+- audit events:
+  - `anaf.upload_dry_run`
+  - `anaf.upload_submitted`
+  - `anaf.upload_failed`
+- test for mock-mode safety behavior
+- documentation:
+  ```txt
+  docs/anaf-upload-draft.md
+  ```
+
+### New endpoint
+
+```txt
+POST /organizations/{org_id}/invoices/{invoice_id}/anaf-upload-draft
+```
+
+The XML generator is still a skeleton. Validate CIUS-RO before production upload.
+
+
+---
+
+## v3.9 ANAF status check draft
+
+This version adds a draft ANAF `stareMesaj` check:
+
+- backend status-check endpoint
+- RealAnafClient status wiring
+- best-effort parser for ANAF status response
+- frontend button in:
+  ```txt
+  /ubl
+  ```
+- audit events:
+  - `anaf.status_checked`
+  - `anaf.status_check_failed`
+- test for mock-mode safety behavior
+- documentation:
+  ```txt
+  docs/anaf-status-check.md
+  ```
+
+### New endpoint
+
+```txt
+POST /organizations/{org_id}/invoices/{invoice_id}/anaf-status-check
+```
+
+The parser is still a draft. Validate with real ANAF test responses before production.
+
+
+---
+
+## v3.10 ANAF download response draft
+
+This version adds a draft ANAF response download flow:
+
+- invoice response metadata columns
+- backend download-response endpoint
+- RealAnafClient `/descarcare` wiring
+- ZIP saved into document storage as:
+  ```txt
+  anaf_response
+  ```
+- frontend controls in:
+  ```txt
+  /ubl
+  ```
+- audit events:
+  - `anaf.response_downloaded`
+  - `anaf.response_download_failed`
+- test for mock-mode safety behavior
+- documentation:
+  ```txt
+  docs/anaf-download-response.md
+  ```
+
+### New endpoint
+
+```txt
+POST /organizations/{org_id}/invoices/{invoice_id}/anaf-download-response
+```
+
+
+---
+
+## v3.11 ANAF response parser skeleton
+
+This version adds a parser skeleton for ANAF response ZIP files:
+
+- backend parser service:
+  ```txt
+  backend/app/anaf_response_parser.py
+  ```
+- parser endpoint
+- ZIP/XML/text extraction
+- best-effort status/message extraction
+- optional invoice update
+- frontend controls in:
+  ```txt
+  /ubl
+  ```
+- audit event:
+  ```txt
+  anaf.response_parsed
+  ```
+- tests for parsing uploaded ZIP document
+- documentation:
+  ```txt
+  docs/anaf-response-parser.md
+  ```
+
+### New endpoint
+
+```txt
+POST /organizations/{org_id}/invoices/{invoice_id}/anaf-parse-response
+```
+
+
+---
+
+## v3.12 Railway pre-deploy hardening
+
+This version adds Railway deployment preparation:
+
+- backend Railway config:
+  ```txt
+  backend/railway.json
+  ```
+- frontend Railway config:
+  ```txt
+  frontend/railway.json
+  ```
+- backend pre-deploy script:
+  ```txt
+  backend/scripts/railway_predeploy.sh
+  backend/scripts/railway_predeploy_check.py
+  ```
+- Railway env examples:
+  ```txt
+  deploy/railway/backend.env.example
+  deploy/railway/frontend.env.example
+  ```
+- deploy checklist:
+  ```txt
+  docs/railway-deploy-checklist.md
+  ```
+
+The backend pre-deploy command runs Alembic migrations and sanity checks before the service starts.
+
+
+---
+
+## v3.13 Railway smoke tests
+
+This version adds post-deploy verification tooling:
+
+- smoke test script:
+  ```txt
+  scripts/railway_smoke_test.py
+  ```
+- shell wrapper:
+  ```txt
+  scripts/railway_smoke_test.sh
+  ```
+- post-deploy docs:
+  ```txt
+  docs/railway-post-deploy-smoke.md
+  ```
+- launch checklist:
+  ```txt
+  docs/launch-checklist.md
+  ```
+
+Basic usage:
+
+```bash
+python scripts/railway_smoke_test.py \
+  --backend https://your-backend.up.railway.app \
+  --frontend https://your-frontend.up.railway.app
+```
+
+Deep smoke test with data creation:
+
+```bash
+python scripts/railway_smoke_test.py \
+  --backend https://your-backend.up.railway.app \
+  --frontend https://your-frontend.up.railway.app \
+  --include-auth-flow
+```
+
+
+---
+
+## v3.14 production security hardening
+
+This version adds basic backend security hardening:
+
+- security headers middleware
+- trusted host middleware support
+- new settings:
+  ```txt
+  SECURITY_HEADERS_ENABLED
+  TRUSTED_HOSTS
+  ```
+- Railway env examples updated
+- pre-deploy warning for wildcard trusted hosts
+- tests for security headers
+- documentation:
+  ```txt
+  docs/security-hardening.md
+  ```
+
+Recommended production values:
+
+```env
+SECURITY_HEADERS_ENABLED=true
+TRUSTED_HOSTS=api.facturaguard.ro,*.up.railway.app
+```
+
+
+---
+
+## v3.15 plan One
+
+This version renames the previous `free` plan to `one`:
+
+- `free` removed from public plan list
+- new plan:
+  ```txt
+  code: one
+  name: One
+  price: 5 EUR/lună
+  max invoices/month: 50
+  ```
+- default subscription is now `one`
+- existing `free` subscriptions migrate to `one`
+- temporary legacy alias maps `free` to `one`
+- documentation:
+  ```txt
+  docs/plan-one-change.md
+  ```
+
+
+---
+
+## v3.16 NETOPIA Payments API v2
+
+This version adds real NETOPIA Payments API v2 integration:
+
+- unified checkout endpoint:
+  ```txt
+  POST /organizations/{org_id}/billing/netopia/checkout
+  ```
+- config-check endpoint:
+  ```txt
+  GET /billing/netopia/config-check
+  ```
+- IPN endpoint:
+  ```txt
+  POST /billing/netopia/ipn
+  ```
+- frontend now calls the unified NETOPIA checkout endpoint
+- return page:
+  ```txt
+  /billing/return
+  ```
+- new payment transaction metadata:
+  ```txt
+  provider_order_id
+  provider_payment_id
+  provider_status
+  ```
+- migration:
+  ```txt
+  0016_netopia_v2_metadata.py
+  ```
+- Railway env examples updated
+- documentation:
+  ```txt
+  docs/netopia-v2.md
+  ```
+
+
+---
+
+## v3.17 NETOPIA IPN signature hardening
+
+This version hardens NETOPIA IPN handling:
+
+- configurable IPN verification modes:
+  ```txt
+  none
+  shared_secret
+  hmac_sha256
+  hmac_sha512
+  ```
+- new settings:
+  ```txt
+  NETOPIA_IPN_SIGNATURE_MODE
+  NETOPIA_IPN_REQUIRE_SIGNATURE
+  ```
+- raw body HMAC verification support
+- idempotent paid IPN handling
+- Railway pre-deploy validation for strict IPN settings
+- tests for invalid/valid shared secret and HMAC
+- documentation:
+  ```txt
+  docs/netopia-ipn-signature.md
+  ```
+
+
+---
+
+## v3.18 NETOPIA status reconciliation
+
+This version adds manual NETOPIA payment reconciliation:
+
+- transaction list endpoint:
+  ```txt
+  GET /organizations/{org_id}/billing/transactions
+  ```
+- status-check endpoint:
+  ```txt
+  POST /organizations/{org_id}/billing/transactions/{transaction_id}/status-check
+  ```
+- frontend page:
+  ```txt
+  /billing
+  ```
+- manual `/operation/status` integration for NETOPIA v2
+- mock-mode safe behavior
+- tests for transaction listing and mock status check
+- documentation:
+  ```txt
+  docs/netopia-status-reconciliation.md
+  ```

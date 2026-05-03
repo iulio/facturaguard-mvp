@@ -72,6 +72,10 @@ class Invoice(Base):
     priority: Mapped[str] = mapped_column(String(30), default="normal")
     assignee_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     anaf_upload_id: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    anaf_download_id: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    anaf_response_document_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    anaf_last_checked_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    anaf_submission_environment: Mapped[str | None] = mapped_column(String(20), nullable=True)
     last_synced_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
@@ -181,7 +185,7 @@ class OrganizationSubscription(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     organization_id: Mapped[int] = mapped_column(ForeignKey("organizations.id"), unique=True, index=True)
-    plan_code: Mapped[str] = mapped_column(String(50), default="free")
+    plan_code: Mapped[str] = mapped_column(String(50), default="one")
     status: Mapped[str] = mapped_column(String(40), default="active")
     billing_provider: Mapped[str | None] = mapped_column(String(80), nullable=True)
     billing_customer_id: Mapped[str | None] = mapped_column(String(120), nullable=True)
@@ -200,6 +204,9 @@ class PaymentTransaction(Base):
     organization_id: Mapped[int] = mapped_column(ForeignKey("organizations.id"), index=True)
     provider: Mapped[str] = mapped_column(String(80), default="netopia_mock")
     provider_session_id: Mapped[str] = mapped_column(String(120), unique=True, index=True)
+    provider_order_id: Mapped[str | None] = mapped_column(String(160), nullable=True, index=True)
+    provider_payment_id: Mapped[str | None] = mapped_column(String(160), nullable=True, index=True)
+    provider_status: Mapped[str | None] = mapped_column(String(80), nullable=True)
     plan_code: Mapped[str] = mapped_column(String(50))
     amount_eur: Mapped[float] = mapped_column(Float)
     currency: Mapped[str] = mapped_column(String(10), default="EUR")
@@ -268,3 +275,20 @@ class ApiKey(Base):
     status: Mapped[str] = mapped_column(String(30), default="active")
     last_used_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class AnafAuthorization(Base):
+    __tablename__ = "anaf_authorizations"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    organization_id: Mapped[int] = mapped_column(ForeignKey("organizations.id"), index=True)
+    authorized_cif: Mapped[str] = mapped_column(String(50), index=True)
+    access_token_encrypted: Mapped[str] = mapped_column(Text)
+    refresh_token_encrypted: Mapped[str | None] = mapped_column(Text, nullable=True)
+    token_type: Mapped[str] = mapped_column(String(30), default="Bearer")
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    scope: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    status: Mapped[str] = mapped_column(String(30), default="active")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    last_refresh_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

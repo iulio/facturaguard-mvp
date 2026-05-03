@@ -19,7 +19,7 @@ def upgrade() -> None:
         "organization_subscriptions",
         sa.Column("id", sa.Integer(), primary_key=True, index=True),
         sa.Column("organization_id", sa.Integer(), sa.ForeignKey("organizations.id"), nullable=False),
-        sa.Column("plan_code", sa.String(length=50), nullable=False, server_default="free"),
+        sa.Column("plan_code", sa.String(length=50), nullable=False, server_default="one"),
         sa.Column("status", sa.String(length=40), nullable=False, server_default="active"),
         sa.Column("billing_provider", sa.String(length=80), nullable=True),
         sa.Column("billing_customer_id", sa.String(length=120), nullable=True),

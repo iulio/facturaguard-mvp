@@ -379,7 +379,7 @@ def test_billing_plans_subscription_and_usage():
 
     plans_response = client.get("/billing/plans")
     assert plans_response.status_code == 200
-    assert any(plan["code"] == "free" for plan in plans_response.json())
+    assert any(plan["code"] == "one" for plan in plans_response.json())
 
     org_response = client.post(
         "/organizations",
@@ -394,7 +394,7 @@ def test_billing_plans_subscription_and_usage():
         headers=auth_header(token),
     )
     assert subscription_response.status_code == 200
-    assert subscription_response.json()["plan_code"] == "free"
+    assert subscription_response.json()["plan_code"] == "one"
 
     update_response = client.post(
         f"/organizations/{org_id}/subscription",
@@ -894,3 +894,357 @@ def test_import_templates_download():
     zip_response = client.get("/templates/facturaguard-import-templates.zip")
     assert zip_response.status_code == 200
     assert zip_response.headers["content-type"].startswith("application/zip")
+
+
+def test_anaf_real_config_check_and_missing_connect_config():
+    _, token = register_user("anaf-real-owner")
+
+    org_response = client.post(
+        "/organizations",
+        json={"name": "ANAF Real Test SRL", "cui": "RO77778888"},
+        headers=auth_header(token),
+    )
+    assert org_response.status_code == 200
+    org_id = org_response.json()["id"]
+
+    config_response = client.get(
+        f"/organizations/{org_id}/integrations/anaf/config-check",
+        headers=auth_header(token),
+    )
+    assert config_response.status_code == 200
+    assert "configured" in config_response.json()
+    assert "api_base" in config_response.json()
+
+    connect_response = client.get(
+        f"/organizations/{org_id}/integrations/anaf/connect",
+        headers=auth_header(token),
+    )
+    assert connect_response.status_code == 400
+    assert "ANAF_CLIENT_ID" in connect_response.json()["detail"]
+
+
+def test_ubl_preview_and_download():
+    _, token = register_user("ubl-owner")
+
+    org_response = client.post(
+        "/organizations",
+        json={"name": "UBL Test SRL", "cui": "RO12121212", "address": "Strada Demo 1"},
+        headers=auth_header(token),
+    )
+    assert org_response.status_code == 200
+    org_id = org_response.json()["id"]
+
+    upload_response = client.post(
+        f"/organizations/{org_id}/invoices/upload",
+        files={"file": ("ubl.csv", "invoice_number,issue_date,customer_name,customer_cui,total_amount,currency\nUBL-1,2026-04-27,Client XML,RO34343434,100,RON\n", "text/csv")},
+        headers=auth_header(token),
+    )
+    assert upload_response.status_code == 200, upload_response.text
+    invoice_id = upload_response.json()[0]["id"]
+
+    preview_response = client.get(
+        f"/organizations/{org_id}/invoices/{invoice_id}/ubl-preview",
+        headers=auth_header(token),
+    )
+    assert preview_response.status_code == 200, preview_response.text
+    assert "<Invoice" in preview_response.json()["xml"]
+    assert "UBL-1" in preview_response.json()["xml"]
+
+    download_response = client.get(
+        f"/organizations/{org_id}/invoices/{invoice_id}/ubl.xml",
+        headers=auth_header(token),
+    )
+    assert download_response.status_code == 200
+    assert "application/xml" in download_response.headers["content-type"]
+    assert "UBL-1" in download_response.text
+
+
+def test_anaf_upload_draft_requires_real_mode_or_reports_mock():
+    _, token = register_user("anaf-upload-owner")
+
+    org_response = client.post(
+        "/organizations",
+        json={"name": "ANAF Upload Test SRL", "cui": "RO90909090", "address": "Strada Test 1"},
+        headers=auth_header(token),
+    )
+    assert org_response.status_code == 200
+    org_id = org_response.json()["id"]
+
+    upload_response = client.post(
+        f"/organizations/{org_id}/invoices/upload",
+        files={"file": ("anaf-upload.csv", "invoice_number,issue_date,customer_name,customer_cui,total_amount,currency\nAU-1,2026-04-27,Client ANAF,RO34343434,100,RON\n", "text/csv")},
+        headers=auth_header(token),
+    )
+    assert upload_response.status_code == 200, upload_response.text
+    invoice_id = upload_response.json()[0]["id"]
+
+    draft_response = client.post(
+        f"/organizations/{org_id}/invoices/{invoice_id}/anaf-upload-draft",
+        headers=auth_header(token),
+    )
+    assert draft_response.status_code == 200, draft_response.text
+    payload = draft_response.json()
+    assert payload["attempted"] is False
+    assert payload["uploaded"] is False
+    assert "ANAF_CONNECTOR_MODE" in payload["message"]
+
+
+def test_anaf_status_check_reports_mock_mode():
+    _, token = register_user("anaf-status-owner")
+
+    org_response = client.post(
+        "/organizations",
+        json={"name": "ANAF Status Test SRL", "cui": "RO91919191", "address": "Strada Test 2"},
+        headers=auth_header(token),
+    )
+    assert org_response.status_code == 200
+    org_id = org_response.json()["id"]
+
+    upload_response = client.post(
+        f"/organizations/{org_id}/invoices/upload",
+        files={"file": ("anaf-status.csv", "invoice_number,issue_date,customer_name,customer_cui,total_amount,currency\nAS-1,2026-04-27,Client ANAF,RO34343434,100,RON\n", "text/csv")},
+        headers=auth_header(token),
+    )
+    assert upload_response.status_code == 200, upload_response.text
+    invoice_id = upload_response.json()[0]["id"]
+
+    status_response = client.post(
+        f"/organizations/{org_id}/invoices/{invoice_id}/anaf-status-check",
+        headers=auth_header(token),
+    )
+    assert status_response.status_code == 200, status_response.text
+    payload = status_response.json()
+    assert payload["attempted"] is False
+    assert payload["checked"] is False
+    assert "ANAF_CONNECTOR_MODE" in payload["message"]
+
+
+def test_anaf_download_response_reports_mock_mode():
+    _, token = register_user("anaf-download-owner")
+
+    org_response = client.post(
+        "/organizations",
+        json={"name": "ANAF Download Test SRL", "cui": "RO92929292", "address": "Strada Test 3"},
+        headers=auth_header(token),
+    )
+    assert org_response.status_code == 200
+    org_id = org_response.json()["id"]
+
+    upload_response = client.post(
+        f"/organizations/{org_id}/invoices/upload",
+        files={"file": ("anaf-download.csv", "invoice_number,issue_date,customer_name,customer_cui,total_amount,currency\nAD-1,2026-04-27,Client ANAF,RO34343434,100,RON\n", "text/csv")},
+        headers=auth_header(token),
+    )
+    assert upload_response.status_code == 200, upload_response.text
+    invoice_id = upload_response.json()[0]["id"]
+
+    download_response = client.post(
+        f"/organizations/{org_id}/invoices/{invoice_id}/anaf-download-response?message_id=123456",
+        headers=auth_header(token),
+    )
+    assert download_response.status_code == 200, download_response.text
+    payload = download_response.json()
+    assert payload["attempted"] is False
+    assert payload["downloaded"] is False
+    assert "ANAF_CONNECTOR_MODE" in payload["message"]
+
+
+def test_anaf_response_zip_parser_from_uploaded_document():
+    import io
+    import zipfile
+
+    _, token = register_user("anaf-parser-owner")
+
+    org_response = client.post(
+        "/organizations",
+        json={"name": "ANAF Parser Test SRL", "cui": "RO93939393", "address": "Strada Test 4"},
+        headers=auth_header(token),
+    )
+    assert org_response.status_code == 200
+    org_id = org_response.json()["id"]
+
+    invoice_response = client.post(
+        f"/organizations/{org_id}/invoices/upload",
+        files={"file": ("parser.csv", "invoice_number,issue_date,customer_name,customer_cui,total_amount,currency\nAP-1,2026-04-27,Client ANAF,RO34343434,100,RON\n", "text/csv")},
+        headers=auth_header(token),
+    )
+    assert invoice_response.status_code == 200, invoice_response.text
+    invoice_id = invoice_response.json()[0]["id"]
+
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr(
+            "anaf-response.xml",
+            "<Raspuns><stare>ok</stare><mesaj>Factura validata fara erori</mesaj></Raspuns>",
+        )
+    buffer.seek(0)
+
+    # Store the ZIP through existing document storage by uploading it as an import.
+    client.post(
+        f"/organizations/{org_id}/invoices/upload",
+        files={"file": ("anaf-response.zip", buffer.getvalue(), "application/zip")},
+        headers=auth_header(token),
+    )
+
+    docs_response = client.get(
+        f"/organizations/{org_id}/documents",
+        headers=auth_header(token),
+    )
+    assert docs_response.status_code == 200
+    docs = docs_response.json()
+    document_id = next(doc["id"] for doc in docs if doc["original_filename"] == "anaf-response.zip")
+
+    parse_response = client.post(
+        f"/organizations/{org_id}/invoices/{invoice_id}/anaf-parse-response?document_id={document_id}&apply_result=true",
+        headers=auth_header(token),
+    )
+    assert parse_response.status_code == 200, parse_response.text
+    payload = parse_response.json()
+    assert payload["summary_status"] == "validated"
+    assert payload["file_count"] >= 1
+
+
+def test_security_headers_are_present():
+    response = client.get("/health")
+    assert response.status_code == 200
+    assert response.headers["x-content-type-options"] == "nosniff"
+    assert response.headers["x-frame-options"] == "DENY"
+    assert response.headers["referrer-policy"] == "strict-origin-when-cross-origin"
+    assert "frame-ancestors" in response.headers["content-security-policy"]
+
+
+def test_one_plan_replaces_free_plan():
+    plans_response = client.get("/billing/plans")
+    assert plans_response.status_code == 200
+    plans = plans_response.json()
+
+    one_plan = next(plan for plan in plans if plan["code"] == "one")
+    assert one_plan["name"] == "One"
+    assert one_plan["monthly_price_eur"] == 5
+    assert one_plan["max_invoices_per_month"] == 50
+
+    assert not any(plan["code"] == "free" for plan in plans)
+
+
+def test_netopia_config_check_defaults_to_mock():
+    response = client.get("/billing/netopia/config-check")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["provider"] in {"mock", "v2"}
+    assert "configured" in payload
+    assert "base_url" in payload
+
+def test_netopia_unified_checkout_uses_mock_by_default():
+    _, token = register_user("netopia-v2-owner")
+
+    org_response = client.post(
+        "/organizations",
+        json={"name": "Netopia V2 Test SRL", "cui": "RO30303030"},
+        headers=auth_header(token),
+    )
+    assert org_response.status_code == 200
+    org_id = org_response.json()["id"]
+
+    checkout_response = client.post(
+        f"/organizations/{org_id}/billing/netopia/checkout",
+        json={"plan_code": "starter"},
+        headers=auth_header(token),
+    )
+    assert checkout_response.status_code == 200, checkout_response.text
+    payload = checkout_response.json()
+    assert payload["provider"] in {"netopia_mock", "netopia_v2"}
+    assert payload["checkout_url"]
+
+def test_netopia_ipn_unknown_order_is_ignored():
+    response = client.post(
+        "/billing/netopia/ipn",
+        json={"order": {"orderID": "missing-order"}, "payment": {"status": "paid"}},
+    )
+    assert response.status_code == 200
+    assert response.json()["status"] == "ignored"
+
+
+def test_netopia_ipn_rejects_invalid_secret_when_required(monkeypatch):
+    monkeypatch.setenv("NETOPIA_IPN_SHARED_SECRET", "expected-secret")
+    monkeypatch.setenv("NETOPIA_IPN_SIGNATURE_MODE", "shared_secret")
+    monkeypatch.setenv("NETOPIA_IPN_REQUIRE_SIGNATURE", "true")
+
+    response = client.post(
+        "/billing/netopia/ipn",
+        json={"order": {"orderID": "missing-order"}, "payment": {"status": "paid"}},
+        headers={"X-NETOPIA-Secret": "wrong-secret"},
+    )
+    assert response.status_code == 403
+
+def test_netopia_ipn_accepts_valid_shared_secret_when_required(monkeypatch):
+    monkeypatch.setenv("NETOPIA_IPN_SHARED_SECRET", "expected-secret")
+    monkeypatch.setenv("NETOPIA_IPN_SIGNATURE_MODE", "shared_secret")
+    monkeypatch.setenv("NETOPIA_IPN_REQUIRE_SIGNATURE", "true")
+
+    response = client.post(
+        "/billing/netopia/ipn",
+        json={"order": {"orderID": "missing-order"}, "payment": {"status": "paid"}},
+        headers={"X-NETOPIA-Secret": "expected-secret"},
+    )
+    assert response.status_code == 200
+    assert response.json()["status"] == "ignored"
+
+def test_netopia_ipn_accepts_hmac_signature_when_required(monkeypatch):
+    import hashlib
+    import hmac
+    import json
+
+    monkeypatch.setenv("NETOPIA_IPN_SHARED_SECRET", "hmac-secret")
+    monkeypatch.setenv("NETOPIA_IPN_SIGNATURE_MODE", "hmac_sha256")
+    monkeypatch.setenv("NETOPIA_IPN_REQUIRE_SIGNATURE", "true")
+
+    payload = {"order": {"orderID": "missing-order"}, "payment": {"status": "paid"}}
+    body = json.dumps(payload, separators=(",", ":")).encode("utf-8")
+    signature = hmac.new(b"hmac-secret", body, hashlib.sha256).hexdigest()
+
+    response = client.post(
+        "/billing/netopia/ipn",
+        content=body,
+        headers={
+            "Content-Type": "application/json",
+            "X-NETOPIA-Signature": signature,
+        },
+    )
+    assert response.status_code == 200
+    assert response.json()["status"] == "ignored"
+
+
+def test_billing_transactions_list_and_mock_status_check():
+    _, token = register_user("billing-reconcile-owner")
+
+    org_response = client.post(
+        "/organizations",
+        json={"name": "Billing Reconcile SRL", "cui": "RO40404040"},
+        headers=auth_header(token),
+    )
+    assert org_response.status_code == 200
+    org_id = org_response.json()["id"]
+
+    checkout_response = client.post(
+        f"/organizations/{org_id}/billing/netopia/checkout",
+        json={"plan_code": "starter"},
+        headers=auth_header(token),
+    )
+    assert checkout_response.status_code == 200, checkout_response.text
+    transaction_id = checkout_response.json()["id"]
+
+    list_response = client.get(
+        f"/organizations/{org_id}/billing/transactions",
+        headers=auth_header(token),
+    )
+    assert list_response.status_code == 200
+    assert any(tx["id"] == transaction_id for tx in list_response.json())
+
+    status_response = client.post(
+        f"/organizations/{org_id}/billing/transactions/{transaction_id}/status-check",
+        headers=auth_header(token),
+    )
+    assert status_response.status_code == 200, status_response.text
+    payload = status_response.json()
+    assert payload["transaction_id"] == transaction_id
+    assert payload["changed"] is False
