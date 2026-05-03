@@ -369,3 +369,17 @@ class NotificationSettingsUpdateIn(BaseModel):
     send_near_deadline_alerts: bool | None = None
     near_deadline_days: int | None = None
     daily_digest_enabled: bool | None = None
+
+
+class DigestPreviewOut(BaseModel):
+    organization_id: int
+    recipient: str | None
+    subject: str
+    body: str
+    would_send: bool
+
+class DigestSendResult(BaseModel):
+    organization_id: int
+    sent: bool
+    recipient: str | None
+    message: str

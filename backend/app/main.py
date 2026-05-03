@@ -11,6 +11,7 @@ from .auth import create_access_token, get_current_user, hash_password, verify_p
 from sqlalchemy import text
 from .database import Base, engine, get_db
 from .jobs import run_status_check, start_scheduler, stop_scheduler
+from .digest_service import build_daily_digest, send_daily_digest
 from .file_storage import read_document_content, store_upload_file
 from .invitation_service import accept_invitation, create_invitation, get_public_invitation
 from .middleware import InMemoryRateLimitMiddleware, RequestTimingMiddleware
@@ -23,6 +24,8 @@ from .schemas import (
     CheckoutCreateIn,
     CheckoutSessionOut,
     DashboardSummary,
+    DigestPreviewOut,
+    DigestSendResult,
     InvoiceOut,
     InvitationAcceptIn,
     InvitationAcceptOut,
@@ -653,6 +656,30 @@ def netopia_mock_webhook(
     db.refresh(transaction)
     return transaction
 
+
+
+@app.get("/organizations/{org_id}/digest/preview", response_model=DigestPreviewOut)
+def preview_daily_digest(
+    org_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    organization = get_accessible_organization(db, org_id, current_user, require_owner=True)
+    settings = get_or_create_notification_settings(db, organization, default_email=current_user.email)
+    recipient = settings.alert_email or current_user.email
+    return build_daily_digest(db, organization, recipient)
+
+@app.post("/organizations/{org_id}/digest/send", response_model=DigestSendResult)
+def send_daily_digest_now(
+    org_id: int,
+    force: bool = True,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    organization = get_accessible_organization(db, org_id, current_user, require_owner=True)
+    result = send_daily_digest(db, organization, actor=current_user, force=force)
+    db.commit()
+    return result
 
 @app.get("/organizations/{org_id}/notification-settings", response_model=NotificationSettingsOut)
 def get_notification_settings(

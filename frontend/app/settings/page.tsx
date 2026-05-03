@@ -8,6 +8,7 @@ export default function SettingsPage() {
   const [active, setActive] = useState<number | null>(null);
   const [settings, setSettings] = useState<any>(null);
   const [message, setMessage] = useState("");
+  const [digestPreview, setDigestPreview] = useState<any>(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -34,6 +35,17 @@ export default function SettingsPage() {
     } catch (err: any) {
       setError(err.message);
     }
+  }
+
+  async function previewDigest() {
+    if (!active) return;
+    setDigestPreview(await apiFetch(`/organizations/${active}/digest/preview`));
+  }
+
+  async function sendDigestNow() {
+    if (!active) return;
+    const result = await apiFetch(`/organizations/${active}/digest/send?force=true`, { method: "POST" });
+    setMessage(result.message);
   }
 
   async function saveSettings() {
@@ -134,7 +146,18 @@ export default function SettingsPage() {
             <input type="checkbox" checked={settings.daily_digest_enabled} onChange={(e) => setField("daily_digest_enabled", e.target.checked)} />
           </label>
 
-          <button className="btn" style={{ marginTop: 18 }} onClick={saveSettings}>Salvează setările</button>
+          <div style={{ display: "flex", gap: 8, marginTop: 18, flexWrap: "wrap" }}>
+            <button className="btn" onClick={saveSettings}>Salvează setările</button>
+            <button className="btn secondary" onClick={previewDigest}>Preview digest</button>
+            <button className="btn secondary" onClick={sendDigestNow}>Trimite digest acum</button>
+          </div>
+
+          {digestPreview && (
+            <div className="card" style={{ marginTop: 18, boxShadow: "none" }}>
+              <h3>{digestPreview.subject}</h3>
+              <pre style={{ whiteSpace: "pre-wrap", fontFamily: "inherit" }}>{digestPreview.body}</pre>
+            </div>
+          )}
         </section>
       )}
     </main>

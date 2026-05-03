@@ -550,3 +550,40 @@ def test_notification_settings_update():
     assert payload["alert_email"] == "alerts@example.com"
     assert payload["near_deadline_days"] == 5
     assert payload["daily_digest_enabled"] is True
+
+
+def test_daily_digest_preview_and_send():
+    _, token = register_user("digest-owner")
+
+    org_response = client.post(
+        "/organizations",
+        json={"name": "Digest Test SRL", "cui": "RO88776655"},
+        headers=auth_header(token),
+    )
+    assert org_response.status_code == 200
+    org_id = org_response.json()["id"]
+
+    settings_response = client.put(
+        f"/organizations/{org_id}/notification-settings",
+        json={
+            "email_alerts_enabled": True,
+            "alert_email": "digest@example.com",
+            "daily_digest_enabled": True,
+        },
+        headers=auth_header(token),
+    )
+    assert settings_response.status_code == 200
+
+    preview_response = client.get(
+        f"/organizations/{org_id}/digest/preview",
+        headers=auth_header(token),
+    )
+    assert preview_response.status_code == 200
+    assert "FacturaGuard daily digest" in preview_response.json()["subject"]
+
+    send_response = client.post(
+        f"/organizations/{org_id}/digest/send?force=true",
+        headers=auth_header(token),
+    )
+    assert send_response.status_code == 200, send_response.text
+    assert send_response.json()["sent"] is True

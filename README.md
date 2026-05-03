@@ -670,3 +670,33 @@ This version adds per-organization notification settings:
 GET /organizations/{org_id}/notification-settings
 PUT /organizations/{org_id}/notification-settings
 ```
+
+
+---
+
+## v2.3 daily digest
+
+This version adds daily digest email support:
+
+- daily digest preview endpoint
+- send digest now endpoint
+- scheduler job for digest emails
+- settings page buttons:
+  - preview digest
+  - send digest now
+- audit event:
+  ```txt
+  digest.email_sent
+  ```
+- tests for digest preview/send
+- documentation:
+  ```txt
+  docs/digest.md
+  ```
+
+### New endpoints
+
+```txt
+GET  /organizations/{org_id}/digest/preview
+POST /organizations/{org_id}/digest/send
+```
