@@ -33,6 +33,7 @@ jobs:
           AUTO_CREATE_TABLES: "true"
           RATE_LIMIT_ENABLED: "false"
           FG_ENABLE_SCHEDULER: "false"
+          BCRYPT_ROUNDS: "4"
         run: python -m compileall app scripts
 
       - name: Import app
@@ -40,6 +41,7 @@ jobs:
           AUTO_CREATE_TABLES: "true"
           RATE_LIMIT_ENABLED: "false"
           FG_ENABLE_SCHEDULER: "false"
+          BCRYPT_ROUNDS: "4"
         run: |
           python - <<'PY'
           from app.main import app
@@ -52,6 +54,7 @@ jobs:
           AUTO_CREATE_TABLES: "false"
           RATE_LIMIT_ENABLED: "false"
           FG_ENABLE_SCHEDULER: "false"
+          BCRYPT_ROUNDS: "4"
         run: alembic upgrade head
 
       - name: Run backend tests
@@ -60,6 +63,7 @@ jobs:
           AUTO_CREATE_TABLES: "true"
           RATE_LIMIT_ENABLED: "false"
           FG_ENABLE_SCHEDULER: "false"
+          BCRYPT_ROUNDS: "4"
         run: pytest -q
 
   frontend:

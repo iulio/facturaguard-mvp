@@ -4,7 +4,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     app_name: str = "FacturaGuard MVP API"
-    app_version: str = "3.18.0"
+    app_version: str = "3.18.2"
     environment: str = Field(default="development", alias="ENVIRONMENT")
 
     database_url: str = Field(default="sqlite:///./facturaguard.db", alias="DATABASE_URL")
@@ -12,6 +12,7 @@ class Settings(BaseSettings):
 
     secret_key: str = Field(default="change-this-secret-in-production", alias="SECRET_KEY")
     access_token_expire_minutes: int = Field(default=60 * 24, alias="ACCESS_TOKEN_EXPIRE_MINUTES")
+    bcrypt_rounds: int = Field(default=12, alias="BCRYPT_ROUNDS")
 
     cors_origins: str = Field(
         default="http://localhost:3000,http://127.0.0.1:3000",

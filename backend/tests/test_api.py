@@ -1079,20 +1079,13 @@ def test_anaf_response_zip_parser_from_uploaded_document():
         )
     buffer.seek(0)
 
-    # Store the ZIP through existing document storage by uploading it as an import.
-    client.post(
-        f"/organizations/{org_id}/invoices/upload",
+    document_response = client.post(
+        f"/organizations/{org_id}/documents/upload?document_type=anaf_response",
         files={"file": ("anaf-response.zip", buffer.getvalue(), "application/zip")},
         headers=auth_header(token),
     )
-
-    docs_response = client.get(
-        f"/organizations/{org_id}/documents",
-        headers=auth_header(token),
-    )
-    assert docs_response.status_code == 200
-    docs = docs_response.json()
-    document_id = next(doc["id"] for doc in docs if doc["original_filename"] == "anaf-response.zip")
+    assert document_response.status_code == 200, document_response.text
+    document_id = document_response.json()["id"]
 
     parse_response = client.post(
         f"/organizations/{org_id}/invoices/{invoice_id}/anaf-parse-response?document_id={document_id}&apply_result=true",
@@ -1257,3 +1250,25 @@ def test_billing_transactions_route_is_registered_once():
         if getattr(route, "path", None) == "/organizations/{org_id}/billing/transactions"
     ]
     assert len(matching_routes) == 1
+
+
+def test_document_upload_endpoint():
+    _, token = register_user("document-upload-owner")
+
+    org_response = client.post(
+        "/organizations",
+        json={"name": "Document Upload SRL", "cui": "RO50505050"},
+        headers=auth_header(token),
+    )
+    assert org_response.status_code == 200
+    org_id = org_response.json()["id"]
+
+    upload_response = client.post(
+        f"/organizations/{org_id}/documents/upload?document_type=anaf_response",
+        files={"file": ("sample.txt", b"hello", "text/plain")},
+        headers=auth_header(token),
+    )
+    assert upload_response.status_code == 200, upload_response.text
+    payload = upload_response.json()
+    assert payload["original_filename"] == "sample.txt"
+    assert payload["document_type"] == "anaf_response"

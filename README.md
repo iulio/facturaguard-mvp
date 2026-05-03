@@ -1485,3 +1485,27 @@ This patch fixes the v3.18 backend CI issue:
   ```txt
   docs/ci-fix-v3181.md
   ```
+
+
+---
+
+## v3.18.2 CI fix
+
+This patch fixes the remaining Backend FastAPI CI failures:
+
+- adds generic document upload endpoint:
+  ```txt
+  POST /organizations/{org_id}/documents/upload
+  ```
+- fixes ANAF parser test to upload response ZIP as a document, not as invoice import
+- fixes NETOPIA IPN signature verification to respect live env overrides
+- adds configurable bcrypt rounds:
+  ```txt
+  BCRYPT_ROUNDS
+  ```
+- GitHub Actions uses `BCRYPT_ROUNDS=4` for faster backend tests
+- production default remains `12`
+- documentation:
+  ```txt
+  docs/ci-fix-v3182.md
+  ```

@@ -1718,6 +1718,35 @@ def export_invoices_csv(
     )
 
 
+
+@app.post("/organizations/{org_id}/documents/upload", response_model=OrganizationDocumentOut)
+async def upload_organization_document(
+    org_id: int,
+    document_type: str = "generic",
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    organization = get_accessible_organization(db, org_id, current_user, require_write=True)
+    content = await file.read()
+
+    try:
+        assert_can_store_document(db, organization)
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc))
+
+    document = store_upload_file(
+        db,
+        organization=organization,
+        upload_file=file,
+        content=content,
+        actor=current_user,
+        document_type=document_type,
+    )
+    db.commit()
+    db.refresh(document)
+    return document
+
 @app.get("/organizations/{org_id}/documents", response_model=list[OrganizationDocumentOut])
 def list_organization_documents(
     org_id: int,

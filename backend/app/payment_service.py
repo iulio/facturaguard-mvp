@@ -1,4 +1,5 @@
 from datetime import datetime
+import os
 import hashlib
 import hmac
 import json
@@ -397,33 +398,37 @@ def verify_netopia_ipn_signature(
 ) -> None:
     """Verify NETOPIA IPN authenticity according to configured local policy.
 
-    This supports a strict local shared-secret strategy immediately and HMAC
-    verification for deployments that configure NETOPIA/proxy/webhook signing.
-    Keep NETOPIA_IPN_REQUIRE_SIGNATURE=false during sandbox discovery if the
-    exact provider signature format is not enabled yet.
+    Reads env overrides live so tests and deployments can rotate webhook policy
+    without relying on the settings cache created at app import time.
     """
     settings = get_settings()
-    mode = (settings.netopia_ipn_signature_mode or "none").lower()
-    configured_secret = settings.netopia_ipn_shared_secret
+    mode = (os.getenv("NETOPIA_IPN_SIGNATURE_MODE") or settings.netopia_ipn_signature_mode or "none").lower()
+    configured_secret = os.getenv("NETOPIA_IPN_SHARED_SECRET") or settings.netopia_ipn_shared_secret
+    require_signature_raw = os.getenv("NETOPIA_IPN_REQUIRE_SIGNATURE")
+    require_signature = (
+        require_signature_raw.lower() == "true"
+        if require_signature_raw is not None
+        else settings.netopia_ipn_require_signature
+    )
 
     if mode == "none":
         return
 
     if not configured_secret:
-        if settings.netopia_ipn_require_signature:
+        if require_signature:
             raise PermissionError("NETOPIA_IPN_SHARED_SECRET lipsește.")
         return
 
     if mode == "shared_secret":
         if shared_secret_header == configured_secret:
             return
-        if settings.netopia_ipn_require_signature:
+        if require_signature:
             raise PermissionError("Secret IPN NETOPIA invalid.")
         return
 
     if mode in {"hmac_sha256", "hmac_sha512"}:
         if not signature_header:
-            if settings.netopia_ipn_require_signature:
+            if require_signature:
                 raise PermissionError("Semnătură IPN NETOPIA lipsă.")
             return
 
@@ -438,7 +443,7 @@ def verify_netopia_ipn_signature(
         if hmac.compare_digest(expected.lower(), supplied.lower()):
             return
 
-        if settings.netopia_ipn_require_signature:
+        if require_signature:
             raise PermissionError("Semnătură IPN NETOPIA invalidă.")
         return
 
