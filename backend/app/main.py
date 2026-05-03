@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from .access import get_accessible_organization, write_audit_log
 from .billing import assert_can_create_organization, assert_can_import_invoices, assert_can_store_document, get_or_create_subscription, get_usage, list_plans, update_subscription_plan
+from .audit_service import audit_logs_to_csv, filter_audit_logs
 from .auth import create_access_token, get_current_user, hash_password, verify_password
 from sqlalchemy import text
 from .database import Base, engine, get_db
@@ -18,6 +19,7 @@ from .parsers import parse_csv_upload, parse_xml_upload, parse_zip_upload
 from .schemas import (
     AlertOut,
     AuditLogOut,
+    AuditSummaryOut,
     CheckoutCreateIn,
     CheckoutSessionOut,
     DashboardSummary,
@@ -933,16 +935,98 @@ def download_organization_document(
 @app.get("/organizations/{org_id}/audit-logs", response_model=list[AuditLogOut])
 def list_audit_logs(
     org_id: int,
+    action: str | None = None,
+    entity_type: str | None = None,
+    actor_user_id: int | None = None,
+    limit: int = 200,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     get_accessible_organization(db, org_id, current_user)
-    return (
+    return filter_audit_logs(
+        db,
+        organization_id=org_id,
+        action=action,
+        entity_type=entity_type,
+        actor_user_id=actor_user_id,
+        limit=limit,
+    )
+
+@app.get("/organizations/{org_id}/audit-logs/export.csv")
+def export_audit_logs_csv(
+    org_id: int,
+    action: str | None = None,
+    entity_type: str | None = None,
+    actor_user_id: int | None = None,
+    limit: int = 1000,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    organization = get_accessible_organization(db, org_id, current_user)
+
+    logs = filter_audit_logs(
+        db,
+        organization_id=org_id,
+        action=action,
+        entity_type=entity_type,
+        actor_user_id=actor_user_id,
+        limit=limit,
+    )
+    csv_content = audit_logs_to_csv(logs)
+
+    write_audit_log(
+        db,
+        organization_id=org_id,
+        actor_user_id=current_user.id,
+        action="audit.csv_exported",
+        entity_type="audit_export",
+        message=f"Audit CSV exportat cu {len(logs)} evenimente.",
+    )
+    db.commit()
+
+    filename = f"facturaguard-audit-{organization.cui}.csv"
+    return Response(
+        content=csv_content,
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+@app.get("/organizations/{org_id}/audit-summary", response_model=AuditSummaryOut)
+def get_audit_summary(
+    org_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    get_accessible_organization(db, org_id, current_user)
+
+    logs = (
         db.query(AuditLog)
         .filter(AuditLog.organization_id == org_id)
         .order_by(AuditLog.created_at.desc())
-        .limit(100)
+        .limit(1000)
         .all()
+    )
+
+    by_action: dict[str, int] = {}
+    by_entity_type: dict[str, int] = {}
+
+    for log in logs:
+        by_action[log.action] = by_action.get(log.action, 0) + 1
+        entity = log.entity_type or "unknown"
+        by_entity_type[entity] = by_entity_type.get(entity, 0) + 1
+
+    return AuditSummaryOut(
+        organization_id=org_id,
+        total_events=len(logs),
+        by_action=[
+            {"action": action, "count": count}
+            for action, count in sorted(by_action.items(), key=lambda item: item[1], reverse=True)
+        ][:20],
+        by_entity_type=[
+            {"entity_type": entity_type, "count": count}
+            for entity_type, count in sorted(by_entity_type.items(), key=lambda item: item[1], reverse=True)
+        ][:20],
+        recent_events=logs[:10],
     )
 
 @app.post("/jobs/run-status-check")

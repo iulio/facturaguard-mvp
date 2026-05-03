@@ -618,3 +618,29 @@ This version adds release-readiness tooling and documentation:
 demo@facturaguard.local
 DemoPassword123!
 ```
+
+
+---
+
+## v2.1 audit dashboard
+
+This version adds audit visibility:
+
+- audit dashboard page:
+  ```txt
+  /audit
+  ```
+- audit filters by action/entity type
+- audit CSV export
+- audit summary endpoint
+- audit documentation:
+  ```txt
+  docs/audit.md
+  ```
+
+### New endpoints
+
+```txt
+GET /organizations/{org_id}/audit-summary
+GET /organizations/{org_id}/audit-logs/export.csv
+```

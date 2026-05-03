@@ -481,3 +481,36 @@ def test_onboarding_status_progression():
     after_upload = client.get("/onboarding/status", headers=auth_header(token))
     assert after_upload.status_code == 200
     assert after_upload.json()["next_step"] == "run_sync"
+
+
+def test_audit_summary_and_csv_export():
+    _, token = register_user("audit-owner")
+
+    org_response = client.post(
+        "/organizations",
+        json={"name": "Audit Test SRL", "cui": "RO33112244"},
+        headers=auth_header(token),
+    )
+    assert org_response.status_code == 200
+    org_id = org_response.json()["id"]
+
+    summary_response = client.get(
+        f"/organizations/{org_id}/audit-summary",
+        headers=auth_header(token),
+    )
+    assert summary_response.status_code == 200
+    assert summary_response.json()["total_events"] >= 1
+
+    logs_response = client.get(
+        f"/organizations/{org_id}/audit-logs?action=organization",
+        headers=auth_header(token),
+    )
+    assert logs_response.status_code == 200
+
+    csv_response = client.get(
+        f"/organizations/{org_id}/audit-logs/export.csv",
+        headers=auth_header(token),
+    )
+    assert csv_response.status_code == 200
+    assert "action" in csv_response.text
+    assert "organization.created" in csv_response.text

@@ -335,3 +335,11 @@ class OnboardingStatusOut(BaseModel):
     open_alerts: int
     completed: bool
     next_step: str
+
+
+class AuditSummaryOut(BaseModel):
+    organization_id: int
+    total_events: int
+    by_action: list[dict]
+    by_entity_type: list[dict]
+    recent_events: list[AuditLogOut]
