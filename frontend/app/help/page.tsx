@@ -52,6 +52,7 @@ export default function HelpPage() {
           <div className="marketing-links">
             <Link href="/pricing">Prețuri</Link>
             <Link href="/roi">ROI</Link>
+            <Link href="/templates">Templates</Link>
             <Link href="/">Login</Link>
           </div>
         </nav>

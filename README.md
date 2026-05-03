@@ -1018,3 +1018,33 @@ This version adds a public help center and demo script:
   ```
 
 No database migration is included in this version.
+
+
+---
+
+## v3.5 import templates
+
+This version adds public import templates:
+
+- frontend page:
+  ```txt
+  /templates
+  ```
+- CSV template download
+- XML template download
+- ZIP package download
+- tests for template endpoints
+- documentation:
+  ```txt
+  docs/import-templates.md
+  ```
+
+### New endpoints
+
+```txt
+GET /templates/invoices.csv
+GET /templates/invoices.xml
+GET /templates/facturaguard-import-templates.zip
+```
+
+No database migration is included in this version.

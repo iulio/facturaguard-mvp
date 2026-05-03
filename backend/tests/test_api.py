@@ -879,3 +879,18 @@ def test_api_key_create_public_invoice_and_revoke():
         headers={"X-API-Key": raw_key},
     )
     assert public_after_revoke.status_code == 401
+
+
+def test_import_templates_download():
+    csv_response = client.get("/templates/invoices.csv")
+    assert csv_response.status_code == 200
+    assert "invoice_number" in csv_response.text
+    assert "FG-001" in csv_response.text
+
+    xml_response = client.get("/templates/invoices.xml")
+    assert xml_response.status_code == 200
+    assert "<invoices>" in xml_response.text
+
+    zip_response = client.get("/templates/facturaguard-import-templates.zip")
+    assert zip_response.status_code == 200
+    assert zip_response.headers["content-type"].startswith("application/zip")

@@ -100,6 +100,7 @@ from .report_service import generate_invoices_csv, generate_monthly_report_pdf
 from .saved_views_service import create_saved_view, delete_saved_view, list_saved_views, update_saved_view
 from .work_queue_service import build_work_queue
 from .system_status_service import build_system_status
+from .template_service import CSV_TEMPLATE, XML_TEMPLATE, build_templates_zip
 from .sync_service import (
     get_or_create_anaf_integration,
     sync_invoice_status,
@@ -136,6 +137,31 @@ def root():
     return {"app": settings.app_name, "version": settings.app_version, "status": "ok"}
 
 
+
+
+@app.get("/templates/invoices.csv")
+def download_csv_template():
+    return Response(
+        content=CSV_TEMPLATE,
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": 'attachment; filename="facturaguard-template.csv"'},
+    )
+
+@app.get("/templates/invoices.xml")
+def download_xml_template():
+    return Response(
+        content=XML_TEMPLATE,
+        media_type="application/xml; charset=utf-8",
+        headers={"Content-Disposition": 'attachment; filename="facturaguard-template.xml"'},
+    )
+
+@app.get("/templates/facturaguard-import-templates.zip")
+def download_templates_zip():
+    return Response(
+        content=build_templates_zip(),
+        media_type="application/zip",
+        headers={"Content-Disposition": 'attachment; filename="facturaguard-import-templates.zip"'},
+    )
 
 @app.get("/system/status", response_model=SystemStatusOut)
 def get_system_status(
