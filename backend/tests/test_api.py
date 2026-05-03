@@ -809,3 +809,17 @@ def test_work_queue_filters():
     payload = queue_response.json()
     assert payload["total"] >= 1
     assert payload["urgent"] >= 1
+
+
+def test_system_status_endpoint():
+    _, token = register_user("system-status-user")
+
+    response = client.get(
+        "/system/status",
+        headers=auth_header(token),
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["database"] in {"ok", "error"}
+    assert "app_version" in payload
+    assert "total_organizations" in payload

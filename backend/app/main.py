@@ -74,6 +74,7 @@ from .schemas import (
     UserCreate,
     SubscriptionOut,
     SubscriptionUpdateIn,
+    SystemStatusOut,
     UsageOut,
     UserOut,
     WorkQueueSummaryOut,
@@ -93,6 +94,7 @@ from .portfolio_service import build_portfolio_summary
 from .report_service import generate_invoices_csv, generate_monthly_report_pdf
 from .saved_views_service import create_saved_view, delete_saved_view, list_saved_views, update_saved_view
 from .work_queue_service import build_work_queue
+from .system_status_service import build_system_status
 from .sync_service import (
     get_or_create_anaf_integration,
     sync_invoice_status,
@@ -128,6 +130,14 @@ app.add_middleware(
 def root():
     return {"app": settings.app_name, "version": settings.app_version, "status": "ok"}
 
+
+
+@app.get("/system/status", response_model=SystemStatusOut)
+def get_system_status(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return build_system_status(db)
 
 @app.get("/health")
 def health():

@@ -488,3 +488,20 @@ class WorkQueueSummaryOut(BaseModel):
     overdue: int
     near_deadline: int
     invoices: list[InvoiceOut]
+
+
+class SystemStatusOut(BaseModel):
+    app_name: str
+    app_version: str
+    environment: str
+    database: str
+    scheduler_enabled: bool
+    email_dry_run: bool
+    storage_backend: str
+    anaf_connector_mode: str
+    netopia_mock_enabled: bool
+    rate_limit_enabled: bool
+    total_organizations: int
+    total_invoices: int
+    total_documents: int
+    total_open_alerts: int

@@ -885,3 +885,26 @@ This version adds an operational invoice work queue:
 ```txt
 GET /organizations/{org_id}/work-queue
 ```
+
+
+---
+
+## v3.0 system status
+
+This version adds system diagnostics:
+
+- app version bumped to `3.0.0`
+- system status endpoint:
+  ```txt
+  GET /system/status
+  ```
+- frontend page:
+  ```txt
+  /system-status
+  ```
+- shows API/DB/config counters
+- tests for system status endpoint
+- documentation:
+  ```txt
+  docs/system-status.md
+  ```
