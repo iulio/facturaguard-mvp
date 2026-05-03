@@ -18,6 +18,8 @@ export default function Home() {
   const [portfolio, setPortfolio] = useState<any>(null);
   const [portfolioSearch, setPortfolioSearch] = useState("");
   const [riskFilter, setRiskFilter] = useState("");
+  const [savedViews, setSavedViews] = useState<any[]>([]);
+  const [savedViewName, setSavedViewName] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("client_viewer");
   const [invitations, setInvitations] = useState<any[]>([]);
@@ -29,7 +31,7 @@ export default function Home() {
   const [resetEmail, setResetEmail] = useState("");
 
   useEffect(() => { setAuthed(Boolean(getToken())); setReady(true); }, []);
-  useEffect(() => { if (authed) { loadOrganizations(); loadPortfolio(); loadPlans(); } }, [authed]);
+  useEffect(() => { if (authed) { loadOrganizations(); loadPortfolio(); loadPlans(); loadSavedViews(); } }, [authed]);
   useEffect(() => { if (active) refresh(active); }, [active]);
 
   async function refresh(id: number) {
@@ -42,6 +44,49 @@ export default function Home() {
     if (riskFilter) params.set("risk", riskFilter);
     const suffix = params.toString() ? `?${params.toString()}` : "";
     setPortfolio(await apiFetch(`/portfolio${suffix}`));
+  }
+
+  async function loadSavedViews() {
+    try {
+      setSavedViews(await apiFetch(`/saved-views?view_type=portfolio`));
+    } catch {
+      setSavedViews([]);
+    }
+  }
+
+  async function saveCurrentView() {
+    if (!savedViewName) return;
+    await apiFetch(`/saved-views`, {
+      method: "POST",
+      body: JSON.stringify({
+        name: savedViewName,
+        view_type: "portfolio",
+        filters: { search: portfolioSearch, risk: riskFilter },
+        is_default: false,
+      }),
+    });
+    setSavedViewName("");
+    await loadSavedViews();
+  }
+
+  async function applySavedView(view: any) {
+    try {
+      const filters = JSON.parse(view.filters_json || "{}");
+      setPortfolioSearch(filters.search || "");
+      setRiskFilter(filters.risk || "");
+      const params = new URLSearchParams();
+      if (filters.search) params.set("search", filters.search);
+      if (filters.risk) params.set("risk", filters.risk);
+      const suffix = params.toString() ? `?${params.toString()}` : "";
+      setPortfolio(await apiFetch(`/portfolio${suffix}`));
+    } catch {
+      setErr("Nu am putut aplica vederea salvată.");
+    }
+  }
+
+  async function deleteSavedView(id: number) {
+    await apiFetch(`/saved-views/${id}`, { method: "DELETE" });
+    await loadSavedViews();
   }
 
   async function submitAuth(e: React.FormEvent) {
@@ -274,6 +319,22 @@ export default function Home() {
             <option value="medium">Risc mediu</option>
             <option value="low">Risc mic</option>
           </select>
+        </div>
+
+        <div className="card" style={{ boxShadow: "none", marginBottom: 18 }}>
+          <h3>Saved views</h3>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
+            {savedViews.map((view) => (
+              <span key={view.id} style={{ display: "inline-flex", gap: 6 }}>
+                <button className="btn secondary" onClick={() => applySavedView(view)}>{view.name}</button>
+                <button className="btn secondary" onClick={() => deleteSavedView(view.id)}>×</button>
+              </span>
+            ))}
+          </div>
+          <div className="grid grid-2">
+            <input className="input" placeholder="Nume vedere, ex: Risc mare" value={savedViewName} onChange={(e) => setSavedViewName(e.target.value)} />
+            <button className="btn secondary" onClick={saveCurrentView}>Salvează vederea curentă</button>
+          </div>
         </div>
 
         <section className="grid grid-4">

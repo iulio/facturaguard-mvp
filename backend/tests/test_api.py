@@ -636,3 +636,41 @@ def test_client_portal_read_only_access():
         headers=auth_header(client_token),
     )
     assert upload_response.status_code == 403
+
+
+def test_saved_views_crud():
+    _, token = register_user("views-user")
+
+    create_response = client.post(
+        "/saved-views",
+        json={
+            "name": "Risc mare",
+            "view_type": "portfolio",
+            "filters": {"risk": "high", "search": ""},
+            "is_default": True,
+        },
+        headers=auth_header(token),
+    )
+    assert create_response.status_code == 200, create_response.text
+    view_id = create_response.json()["id"]
+
+    list_response = client.get(
+        "/saved-views?view_type=portfolio",
+        headers=auth_header(token),
+    )
+    assert list_response.status_code == 200
+    assert any(view["id"] == view_id for view in list_response.json())
+
+    update_response = client.put(
+        f"/saved-views/{view_id}",
+        json={"name": "Risc mare actualizat", "filters": {"risk": "high"}},
+        headers=auth_header(token),
+    )
+    assert update_response.status_code == 200
+    assert update_response.json()["name"] == "Risc mare actualizat"
+
+    delete_response = client.delete(
+        f"/saved-views/{view_id}",
+        headers=auth_header(token),
+    )
+    assert delete_response.status_code == 200

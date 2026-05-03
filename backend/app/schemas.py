@@ -404,3 +404,28 @@ class ClientPortalOrganizationDetailOut(BaseModel):
     recent_invoices: list[InvoiceOut]
     open_alerts: list[AlertOut]
     documents: list[OrganizationDocumentOut]
+
+
+class SavedViewCreate(BaseModel):
+    name: str
+    view_type: str = "portfolio"
+    filters: dict = {}
+    is_default: bool = False
+
+class SavedViewUpdate(BaseModel):
+    name: str | None = None
+    filters: dict | None = None
+    is_default: bool | None = None
+
+class SavedViewOut(BaseModel):
+    id: int
+    user_id: int
+    name: str
+    view_type: str
+    filters_json: str
+    is_default: bool
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True

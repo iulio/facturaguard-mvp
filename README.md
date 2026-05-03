@@ -730,3 +730,29 @@ This version adds a read-only client portal:
 GET /client-portal
 GET /client-portal/organizations/{org_id}
 ```
+
+
+---
+
+## v2.5 saved views
+
+This version adds saved views for the portfolio dashboard:
+
+- save current portfolio filters
+- apply saved portfolio views
+- delete saved views
+- user-scoped saved view table
+- tests for saved view CRUD
+- documentation:
+  ```txt
+  docs/saved-views.md
+  ```
+
+### New endpoints
+
+```txt
+GET    /saved-views
+POST   /saved-views
+PUT    /saved-views/{saved_view_id}
+DELETE /saved-views/{saved_view_id}
+```

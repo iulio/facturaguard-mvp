@@ -16,7 +16,7 @@ from .digest_service import build_daily_digest, send_daily_digest
 from .file_storage import read_document_content, store_upload_file
 from .invitation_service import accept_invitation, create_invitation, get_public_invitation
 from .middleware import InMemoryRateLimitMiddleware, RequestTimingMiddleware
-from .models import Alert, AuditLog, Invoice, Organization, OrganizationDocument, OrganizationIntegration, OrganizationInvitation, OrganizationMember, OrganizationNotificationSettings, OrganizationSubscription, PaymentTransaction, User
+from .models import Alert, AuditLog, Invoice, Organization, OrganizationDocument, OrganizationIntegration, OrganizationInvitation, OrganizationMember, OrganizationNotificationSettings, OrganizationSubscription, PaymentTransaction, SavedView, User
 from .parsers import parse_csv_upload, parse_xml_upload, parse_zip_upload
 from .schemas import (
     AlertOut,
@@ -38,6 +38,9 @@ from .schemas import (
     InvitationOut,
     PlanOut,
     PublicInvitationOut,
+    SavedViewCreate,
+    SavedViewOut,
+    SavedViewUpdate,
     LoginIn,
     MessageOut,
     MonthlyReport,
@@ -78,6 +81,7 @@ from .password_service import change_password, create_password_reset_token, rese
 from .payment_service import create_netopia_mock_checkout, process_netopia_mock_webhook
 from .portfolio_service import build_portfolio_summary
 from .report_service import generate_invoices_csv, generate_monthly_report_pdf
+from .saved_views_service import create_saved_view, delete_saved_view, list_saved_views, update_saved_view
 from .sync_service import (
     get_or_create_anaf_integration,
     sync_invoice_status,
@@ -240,6 +244,70 @@ def get_client_portal_organization(
         return get_client_portal_detail(db, current_user, org_id)
     except PermissionError as exc:
         raise HTTPException(status_code=403, detail=str(exc))
+
+
+@app.get("/saved-views", response_model=list[SavedViewOut])
+def get_saved_views(
+    view_type: str = "portfolio",
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return list_saved_views(db, current_user, view_type=view_type)
+
+@app.post("/saved-views", response_model=SavedViewOut)
+def create_user_saved_view(
+    payload: SavedViewCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    saved_view = create_saved_view(
+        db,
+        current_user,
+        name=payload.name,
+        view_type=payload.view_type,
+        filters=payload.filters,
+        is_default=payload.is_default,
+    )
+    db.commit()
+    db.refresh(saved_view)
+    return saved_view
+
+@app.put("/saved-views/{saved_view_id}", response_model=SavedViewOut)
+def update_user_saved_view(
+    saved_view_id: int,
+    payload: SavedViewUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        saved_view = update_saved_view(
+            db,
+            current_user,
+            saved_view_id=saved_view_id,
+            name=payload.name,
+            filters=payload.filters,
+            is_default=payload.is_default,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+    db.commit()
+    db.refresh(saved_view)
+    return saved_view
+
+@app.delete("/saved-views/{saved_view_id}")
+def delete_user_saved_view(
+    saved_view_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        delete_saved_view(db, current_user, saved_view_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+    db.commit()
+    return {"message": "Saved view deleted."}
 
 @app.get("/portfolio", response_model=PortfolioSummary)
 def portfolio_dashboard(

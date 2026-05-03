@@ -222,3 +222,16 @@ class OrganizationNotificationSettings(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     organization = relationship("Organization", back_populates="notification_settings")
+
+
+class SavedView(Base):
+    __tablename__ = "saved_views"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    name: Mapped[str] = mapped_column(String(120))
+    view_type: Mapped[str] = mapped_column(String(60), default="portfolio")
+    filters_json: Mapped[str] = mapped_column(Text, default="{}")
+    is_default: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
