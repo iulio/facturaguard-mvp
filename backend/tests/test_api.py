@@ -158,12 +158,19 @@ def test_portfolio_dashboard_summary():
     )
     assert org_a.status_code == 200
 
+    upgrade_response = client.post(
+        f"/organizations/{org_a.json()['id']}/subscription",
+        json={"plan_code": "starter"},
+        headers=auth_header(token),
+    )
+    assert upgrade_response.status_code == 200, upgrade_response.text
+
     org_b = client.post(
         "/organizations",
         json={"name": "Portfolio B SRL", "cui": "RO90000002"},
         headers=auth_header(token),
     )
-    assert org_b.status_code == 200
+    assert org_b.status_code == 200, org_b.text
 
     portfolio_response = client.get("/portfolio", headers=auth_header(token))
     assert portfolio_response.status_code == 200

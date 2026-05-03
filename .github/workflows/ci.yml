@@ -32,6 +32,7 @@ jobs:
         env:
           AUTO_CREATE_TABLES: "true"
           RATE_LIMIT_ENABLED: "false"
+          FG_ENABLE_SCHEDULER: "false"
         run: |
           python - <<'PY'
           from app.main import app
@@ -43,6 +44,7 @@ jobs:
           DATABASE_URL: sqlite:///./ci_migration_test.db
           AUTO_CREATE_TABLES: "false"
           RATE_LIMIT_ENABLED: "false"
+          FG_ENABLE_SCHEDULER: "false"
         run: alembic upgrade head
 
       - name: Run backend tests
@@ -50,6 +52,7 @@ jobs:
           DATABASE_URL: sqlite:///./ci_test.db
           AUTO_CREATE_TABLES: "true"
           RATE_LIMIT_ENABLED: "false"
+          FG_ENABLE_SCHEDULER: "false"
         run: pytest -q
 
   frontend:
