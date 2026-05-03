@@ -1272,3 +1272,21 @@ def test_document_upload_endpoint():
     payload = upload_response.json()
     assert payload["original_filename"] == "sample.txt"
     assert payload["document_type"] == "anaf_response"
+
+
+def test_deployment_readiness_endpoint():
+    _, token = register_user("deployment-readiness-owner")
+
+    response = client.get(
+        "/deployment/readiness",
+        headers=auth_header(token),
+    )
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert payload["app"]
+    assert payload["version"] == "3.19.0"
+    assert payload["overall_status"] in {"pass", "warn", "fail"}
+    assert payload["summary"]["total"] == len(payload["checks"])
+    assert any(check["key"] == "database" for check in payload["checks"])
+    assert any(check["key"] == "netopia" for check in payload["checks"])
+    assert any(check["key"] == "anaf" for check in payload["checks"])

@@ -4,7 +4,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     app_name: str = "FacturaGuard MVP API"
-    app_version: str = "3.18.2"
+    app_version: str = "3.19.0"
     environment: str = Field(default="development", alias="ENVIRONMENT")
 
     database_url: str = Field(default="sqlite:///./facturaguard.db", alias="DATABASE_URL")

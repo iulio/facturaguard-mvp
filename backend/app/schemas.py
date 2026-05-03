@@ -664,3 +664,12 @@ class NetopiaStatusCheckOut(BaseModel):
     changed: bool
     message: str
     raw_response: dict | None = None
+
+
+class DeploymentReadinessOut(BaseModel):
+    app: str
+    version: str
+    environment: str
+    overall_status: str
+    summary: dict
+    checks: list[dict]

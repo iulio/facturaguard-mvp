@@ -1509,3 +1509,36 @@ This patch fixes the remaining Backend FastAPI CI failures:
   ```txt
   docs/ci-fix-v3182.md
   ```
+
+
+---
+
+## v3.19 deployment readiness dashboard
+
+This version adds a runtime deployment checklist:
+
+- backend service:
+  ```txt
+  backend/app/deployment_readiness_service.py
+  ```
+- authenticated endpoint:
+  ```txt
+  GET /deployment/readiness
+  ```
+- frontend page:
+  ```txt
+  /deployment
+  ```
+- dashboard link:
+  ```txt
+  Deployment
+  ```
+- checks for DB, storage, CORS, trusted hosts, security headers, scheduler, email dry-run, ANAF and NETOPIA
+- test coverage:
+  ```txt
+  test_deployment_readiness_endpoint
+  ```
+- documentation:
+  ```txt
+  docs/deployment-readiness.md
+  ```

@@ -21,6 +21,7 @@ from .audit_service import audit_logs_to_csv, filter_audit_logs
 from .auth import create_access_token, get_current_user, hash_password, verify_password
 from sqlalchemy import text
 from .database import Base, engine, get_db
+from .deployment_readiness_service import build_deployment_readiness
 from .jobs import run_status_check, start_scheduler, stop_scheduler
 from .digest_service import build_daily_digest, send_daily_digest
 from .file_storage import read_document_content, store_upload_file
@@ -53,6 +54,7 @@ from .schemas import (
     CheckoutSessionOut,
     DashboardSummary,
     DigestPreviewOut,
+    DeploymentReadinessOut,
     DigestSendResult,
     InvoiceMetadataOut,
     InvoiceMetadataUpdateIn,
@@ -254,6 +256,13 @@ def download_templates_zip():
         media_type="application/zip",
         headers={"Content-Disposition": 'attachment; filename="facturaguard-import-templates.zip"'},
     )
+
+
+@app.get("/deployment/readiness", response_model=DeploymentReadinessOut)
+def get_deployment_readiness(
+    current_user: User = Depends(get_current_user),
+):
+    return build_deployment_readiness(engine)
 
 @app.get("/system/status", response_model=SystemStatusOut)
 def get_system_status(
