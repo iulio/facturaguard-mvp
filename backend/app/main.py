@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
 from .access import get_accessible_organization, write_audit_log
+from .client_portal_service import get_client_portal_detail, get_client_portal_organizations
 from .billing import assert_can_create_organization, assert_can_import_invoices, assert_can_store_document, get_or_create_subscription, get_usage, list_plans, update_subscription_plan
 from .audit_service import audit_logs_to_csv, filter_audit_logs
 from .auth import create_access_token, get_current_user, hash_password, verify_password
@@ -22,6 +23,8 @@ from .schemas import (
     AuditLogOut,
     AuditSummaryOut,
     CheckoutCreateIn,
+    ClientPortalOrganizationDetailOut,
+    ClientPortalSummaryOut,
     CheckoutSessionOut,
     DashboardSummary,
     DigestPreviewOut,
@@ -216,6 +219,27 @@ def get_onboarding_status(
     current_user: User = Depends(get_current_user),
 ):
     return build_onboarding_status(db, current_user)
+
+
+@app.get("/client-portal", response_model=ClientPortalSummaryOut)
+def get_client_portal(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return ClientPortalSummaryOut(
+        organizations=get_client_portal_organizations(db, current_user)
+    )
+
+@app.get("/client-portal/organizations/{org_id}", response_model=ClientPortalOrganizationDetailOut)
+def get_client_portal_organization(
+    org_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        return get_client_portal_detail(db, current_user, org_id)
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc))
 
 @app.get("/portfolio", response_model=PortfolioSummary)
 def portfolio_dashboard(

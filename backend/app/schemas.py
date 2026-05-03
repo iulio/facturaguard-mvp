@@ -383,3 +383,24 @@ class DigestSendResult(BaseModel):
     sent: bool
     recipient: str | None
     message: str
+
+
+class ClientPortalOrganizationOut(BaseModel):
+    id: int
+    name: str
+    cui: str
+    role: str
+    total_invoices: int
+    open_alerts: int
+    rejected: int
+    overdue: int
+    near_deadline: int
+
+class ClientPortalSummaryOut(BaseModel):
+    organizations: list[ClientPortalOrganizationOut]
+
+class ClientPortalOrganizationDetailOut(BaseModel):
+    organization: ClientPortalOrganizationOut
+    recent_invoices: list[InvoiceOut]
+    open_alerts: list[AlertOut]
+    documents: list[OrganizationDocumentOut]

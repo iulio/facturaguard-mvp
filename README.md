@@ -700,3 +700,33 @@ This version adds daily digest email support:
 GET  /organizations/{org_id}/digest/preview
 POST /organizations/{org_id}/digest/send
 ```
+
+
+---
+
+## v2.4 client portal
+
+This version adds a read-only client portal:
+
+- frontend page:
+  ```txt
+  /client-portal
+  ```
+- client portal summary endpoint
+- client portal organization detail endpoint
+- client users can view:
+  - invoices
+  - alerts
+  - documents
+- tests for read-only client access
+- documentation:
+  ```txt
+  docs/client-portal.md
+  ```
+
+### New endpoints
+
+```txt
+GET /client-portal
+GET /client-portal/organizations/{org_id}
+```

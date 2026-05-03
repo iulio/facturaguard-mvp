@@ -587,3 +587,52 @@ def test_daily_digest_preview_and_send():
     )
     assert send_response.status_code == 200, send_response.text
     assert send_response.json()["sent"] is True
+
+
+def test_client_portal_read_only_access():
+    _, owner_token = register_user("portal-owner")
+    client_email, client_token = register_user("portal-client")
+
+    org_response = client.post(
+        "/organizations",
+        json={"name": "Portal Test SRL", "cui": "RO22334455"},
+        headers=auth_header(owner_token),
+    )
+    assert org_response.status_code == 200
+    org_id = org_response.json()["id"]
+
+    invite_response = client.post(
+        f"/organizations/{org_id}/invitations",
+        json={"email": client_email, "role": "client_viewer"},
+        headers=auth_header(owner_token),
+    )
+    assert invite_response.status_code == 200
+    token_value = invite_response.json()["token"]
+
+    accept_response = client.post(
+        "/invitations/accept",
+        json={"token": token_value},
+        headers=auth_header(client_token),
+    )
+    assert accept_response.status_code == 200
+
+    portal_response = client.get(
+        "/client-portal",
+        headers=auth_header(client_token),
+    )
+    assert portal_response.status_code == 200
+    assert any(org["id"] == org_id for org in portal_response.json()["organizations"])
+
+    detail_response = client.get(
+        f"/client-portal/organizations/{org_id}",
+        headers=auth_header(client_token),
+    )
+    assert detail_response.status_code == 200
+    assert detail_response.json()["organization"]["id"] == org_id
+
+    upload_response = client.post(
+        f"/organizations/{org_id}/invoices/upload",
+        files={"file": ("portal.csv", "invoice_number,issue_date,customer_name,customer_cui,total_amount\nP-1,2026-04-27,Client,RO1,100\n", "text/csv")},
+        headers=auth_header(client_token),
+    )
+    assert upload_response.status_code == 403
