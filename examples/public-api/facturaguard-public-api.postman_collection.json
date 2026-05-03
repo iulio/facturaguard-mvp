@@ -1,0 +1,49 @@
+{
+  "info": {
+    "name": "FacturaGuard Public API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000"
+    },
+    {
+      "key": "api_key",
+      "value": "fg_your_api_key_here"
+    }
+  ],
+  "item": [
+    {
+      "name": "Create invoice",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "X-API-Key",
+            "value": "{{api_key}}"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/public-api/v1/invoices",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "public-api",
+            "v1",
+            "invoices"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"invoice_number\": \"ERP-1001\",\n  \"issue_date\": \"2026-04-27\",\n  \"customer_name\": \"Client ERP SRL\",\n  \"customer_cui\": \"RO12345678\",\n  \"total_amount\": 1234.56,\n  \"currency\": \"RON\",\n  \"anaf_status\": \"pending\"\n}"
+        }
+      }
+    }
+  ]
+}

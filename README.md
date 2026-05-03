@@ -941,3 +941,31 @@ POST /organizations/{org_id}/api-keys
 POST /organizations/{org_id}/api-keys/{api_key_id}/revoke
 POST /public-api/v1/invoices
 ```
+
+
+---
+
+## v3.2 developer portal
+
+This version adds public API developer documentation:
+
+- frontend page:
+  ```txt
+  /developer
+  ```
+- cURL, JavaScript and Python examples
+- Postman collection:
+  ```txt
+  examples/public-api/facturaguard-public-api.postman_collection.json
+  ```
+- example scripts:
+  ```txt
+  examples/public-api/create_invoice.py
+  examples/public-api/create_invoice.js
+  ```
+- documentation:
+  ```txt
+  docs/developer-api.md
+  ```
+
+No database migration is included in this version.
