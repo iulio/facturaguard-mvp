@@ -1664,3 +1664,36 @@ This patch fixes the backend import failure after adding onboarding checklist:
   ```txt
   docs/ci-fix-v3212.md
   ```
+
+
+---
+
+## v3.22 pilot workspace
+
+This version adds a pilot setup workspace:
+
+- backend service:
+  ```txt
+  backend/app/pilot_workspace_service.py
+  ```
+- endpoint:
+  ```txt
+  GET /organizations/{org_id}/pilot-workspace
+  ```
+- frontend page:
+  ```txt
+  /pilot
+  ```
+- dashboard link:
+  ```txt
+  Pilot
+  ```
+- summary for invoices, documents, payments, onboarding, deployment readiness, ANAF and NETOPIA
+- test coverage:
+  ```txt
+  test_pilot_workspace_endpoint
+  ```
+- documentation:
+  ```txt
+  docs/pilot-workspace.md
+  ```

@@ -693,3 +693,13 @@ class OnboardingChecklistOut(BaseModel):
     blockers: list[dict]
     steps: list[dict]
     context: dict
+
+
+class PilotWorkspaceOut(BaseModel):
+    organization: dict
+    app: dict
+    summary: dict
+    next_actions: list[dict]
+    onboarding: dict
+    readiness_summary: dict
+    readiness_status: str

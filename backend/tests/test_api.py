@@ -1341,3 +1341,27 @@ def test_onboarding_checklist_schema_import_is_registered():
     ]
     assert len(matching_routes) == 1
     assert getattr(matching_routes[0], "response_model", None).__name__ == "OnboardingChecklistOut"
+
+
+def test_pilot_workspace_endpoint():
+    _, token = register_user("pilot-workspace-owner")
+
+    org_response = client.post(
+        "/organizations",
+        json={"name": "Pilot Workspace SRL", "cui": "RO70707070"},
+        headers=auth_header(token),
+    )
+    assert org_response.status_code == 200
+    org_id = org_response.json()["id"]
+
+    response = client.get(
+        f"/organizations/{org_id}/pilot-workspace",
+        headers=auth_header(token),
+    )
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert payload["organization"]["id"] == org_id
+    assert payload["summary"]["invoice_count"] == 0
+    assert payload["summary"]["onboarding_percent"] >= 0
+    assert payload["next_actions"]
+    assert "readiness_status" in payload
