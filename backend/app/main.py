@@ -151,6 +151,9 @@ app = FastAPI(title=settings.app_name, version=settings.app_version, lifespan=li
 
 trusted_hosts = parse_csv_setting(settings.trusted_hosts)
 if trusted_hosts and trusted_hosts != ["*"]:
+    # Always allow Railway's healthcheck hostname so deployments can pass healthchecks.
+    if "healthcheck.railway.app" not in trusted_hosts:
+        trusted_hosts.append("healthcheck.railway.app")
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=trusted_hosts)
 
 @app.middleware("http")
