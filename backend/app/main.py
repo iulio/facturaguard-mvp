@@ -115,7 +115,7 @@ from .services import (
     explain_anaf_error,
 )
 from .notification_settings_service import get_or_create_notification_settings, update_notification_settings
-from .onboarding_service import build_onboarding_status
+from .onboarding_service import build_onboarding_checklist, build_onboarding_status
 from .password_service import change_password, create_password_reset_token, reset_password_with_token
 from .payment_service import check_netopia_transaction_status, create_netopia_checkout, create_netopia_mock_checkout, get_netopia_v2_config_status, list_organization_payment_transactions, process_netopia_mock_webhook, process_netopia_v2_webhook
 from .portfolio_service import build_portfolio_summary
@@ -525,6 +525,16 @@ def create_organization(
     db.commit()
     db.refresh(org)
     return org
+
+
+@app.get("/organizations/{org_id}/onboarding", response_model=OnboardingChecklistOut)
+def get_onboarding_checklist(
+    org_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    organization = get_accessible_organization(db, org_id, current_user)
+    return build_onboarding_checklist(db, organization)
 
 @app.get("/organizations", response_model=list[OrganizationOut])
 def list_organizations(

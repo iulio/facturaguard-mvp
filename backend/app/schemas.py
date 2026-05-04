@@ -683,3 +683,13 @@ class PublicStatusOut(BaseModel):
     database: str
     providers: dict
     timestamp_utc: str
+
+
+class OnboardingChecklistOut(BaseModel):
+    organization_id: int
+    organization_name: str
+    progress: dict
+    next_step: dict | None = None
+    blockers: list[dict]
+    steps: list[dict]
+    context: dict

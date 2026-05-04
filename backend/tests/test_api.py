@@ -1306,3 +1306,27 @@ def test_public_status_endpoint_is_public_and_sanitized():
     assert "secret" not in serialized
     assert "token" not in serialized
     assert "password" not in serialized
+
+
+def test_onboarding_checklist_endpoint():
+    _, token = register_user("onboarding-owner")
+
+    org_response = client.post(
+        "/organizations",
+        json={"name": "Onboarding Test SRL", "cui": "RO60606060"},
+        headers=auth_header(token),
+    )
+    assert org_response.status_code == 200
+    org_id = org_response.json()["id"]
+
+    response = client.get(
+        f"/organizations/{org_id}/onboarding",
+        headers=auth_header(token),
+    )
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert payload["organization_id"] == org_id
+    assert payload["progress"]["total"] >= 5
+    assert payload["progress"]["done"] >= 1
+    assert any(step["key"] == "import_invoices" for step in payload["steps"])
+    assert "invoice_count" in payload["context"]

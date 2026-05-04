@@ -1586,3 +1586,36 @@ This patch fixes the backend CI failure from v3.20:
   ```txt
   docs/ci-fix-v3201.md
   ```
+
+
+---
+
+## v3.21 onboarding checklist
+
+This version adds an organization onboarding flow:
+
+- backend service:
+  ```txt
+  backend/app/onboarding_service.py
+  ```
+- endpoint:
+  ```txt
+  GET /organizations/{org_id}/onboarding
+  ```
+- frontend page:
+  ```txt
+  /onboarding
+  ```
+- dashboard link:
+  ```txt
+  Onboarding
+  ```
+- checks for invoice import, document storage, deployment readiness, public status, billing, ANAF, UBL and API keys
+- test coverage:
+  ```txt
+  test_onboarding_checklist_endpoint
+  ```
+- documentation:
+  ```txt
+  docs/onboarding-checklist.md
+  ```
