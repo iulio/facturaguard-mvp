@@ -673,3 +673,13 @@ class DeploymentReadinessOut(BaseModel):
     overall_status: str
     summary: dict
     checks: list[dict]
+
+
+class PublicStatusOut(BaseModel):
+    app: str
+    version: str
+    environment: str
+    status: str
+    database: str
+    providers: dict
+    timestamp_utc: str

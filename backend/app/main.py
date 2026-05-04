@@ -69,6 +69,7 @@ from .schemas import (
     InvitationOut,
     PlanOut,
     PublicInvitationOut,
+    PublicStatusOut,
     SavedViewCreate,
     SavedViewOut,
     SavedViewUpdate,
@@ -118,6 +119,7 @@ from .onboarding_service import build_onboarding_status
 from .password_service import change_password, create_password_reset_token, reset_password_with_token
 from .payment_service import check_netopia_transaction_status, create_netopia_checkout, create_netopia_mock_checkout, get_netopia_v2_config_status, list_organization_payment_transactions, process_netopia_mock_webhook, process_netopia_v2_webhook
 from .portfolio_service import build_portfolio_summary
+from .public_status_service import build_public_status
 from .report_service import generate_invoices_csv, generate_monthly_report_pdf
 from .saved_views_service import create_saved_view, delete_saved_view, list_saved_views, update_saved_view
 from .work_queue_service import build_work_queue
@@ -270,6 +272,11 @@ def get_system_status(
     current_user: User = Depends(get_current_user),
 ):
     return build_system_status(db)
+
+
+@app.get("/public/status", response_model=PublicStatusOut)
+def get_public_status():
+    return build_public_status(engine)
 
 @app.get("/health")
 def health():

@@ -1290,3 +1290,18 @@ def test_deployment_readiness_endpoint():
     assert any(check["key"] == "database" for check in payload["checks"])
     assert any(check["key"] == "netopia" for check in payload["checks"])
     assert any(check["key"] == "anaf" for check in payload["checks"])
+
+
+def test_public_status_endpoint_is_public_and_sanitized():
+    response = client.get("/public/status")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["app"]
+    assert payload["version"] == "3.20.0"
+    assert payload["status"] in {"operational", "degraded"}
+    assert "providers" in payload
+
+    serialized = str(payload).lower()
+    assert "secret" not in serialized
+    assert "token" not in serialized
+    assert "password" not in serialized

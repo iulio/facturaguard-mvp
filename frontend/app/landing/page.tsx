@@ -45,6 +45,7 @@ export default function LandingPage() {
             <Link href="/roi">ROI</Link>
             <Link href="/help">Help</Link>
             <Link href="/templates">Templates</Link>
+            <Link href="/status">Status</Link>
             <Link href="/">Login</Link>
           </div>
         </nav>

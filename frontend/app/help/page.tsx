@@ -53,6 +53,7 @@ export default function HelpPage() {
             <Link href="/pricing">Prețuri</Link>
             <Link href="/roi">ROI</Link>
             <Link href="/templates">Templates</Link>
+            <Link href="/status">Status</Link>
             <Link href="/">Login</Link>
           </div>
         </nav>

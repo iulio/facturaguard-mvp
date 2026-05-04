@@ -1542,3 +1542,32 @@ This version adds a runtime deployment checklist:
   ```txt
   docs/deployment-readiness.md
   ```
+
+
+---
+
+## v3.20 public status page
+
+This version adds a sanitized public deployment status page:
+
+- backend service:
+  ```txt
+  backend/app/public_status_service.py
+  ```
+- public endpoint:
+  ```txt
+  GET /public/status
+  ```
+- frontend page:
+  ```txt
+  /status
+  ```
+- links from landing/help pages
+- test coverage:
+  ```txt
+  test_public_status_endpoint_is_public_and_sanitized
+  ```
+- documentation:
+  ```txt
+  docs/public-status.md
+  ```
