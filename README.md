@@ -1619,3 +1619,23 @@ This version adds an organization onboarding flow:
   ```txt
   docs/onboarding-checklist.md
   ```
+
+
+---
+
+## v3.21.1 CI fix
+
+This patch fixes the backend CI failure after v3.21:
+
+- removes exact app-version pinning from:
+  ```txt
+  test_public_status_endpoint_is_public_and_sanitized
+  ```
+- bumps app patch version to:
+  ```txt
+  3.21.1
+  ```
+- documentation:
+  ```txt
+  docs/ci-fix-v3211.md
+  ```

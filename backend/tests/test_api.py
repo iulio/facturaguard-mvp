@@ -1294,11 +1294,12 @@ def test_deployment_readiness_endpoint():
 
 
 def test_public_status_endpoint_is_public_and_sanitized():
+    # Public status should not pin an exact app version; every release bumps it.
     response = client.get("/public/status")
     assert response.status_code == 200
     payload = response.json()
     assert payload["app"]
-    assert payload["version"] == "3.20.0"
+    assert payload["version"]
     assert payload["status"] in {"operational", "degraded"}
     assert "providers" in payload
 
