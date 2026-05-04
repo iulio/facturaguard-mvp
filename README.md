@@ -32,6 +32,9 @@ uvicorn app.main:app --reload --port 8000
 
 ## Local frontend
 
+
+
+
 ```bash
 cd frontend
 npm install
