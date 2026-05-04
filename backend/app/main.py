@@ -78,6 +78,7 @@ from .schemas import (
     MonthlyReport,
     NotificationSettingsOut,
     NotificationSettingsUpdateIn,
+    OnboardingChecklistOut,
     OnboardingStatusOut,
     NetopiaConfigCheckOut,
     NetopiaMockWebhookIn,

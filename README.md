@@ -1639,3 +1639,28 @@ This patch fixes the backend CI failure after v3.21:
   ```txt
   docs/ci-fix-v3211.md
   ```
+
+
+---
+
+## v3.21.2 CI fix
+
+This patch fixes the backend import failure after adding onboarding checklist:
+
+- imports:
+  ```txt
+  OnboardingChecklistOut
+  ```
+  in `backend/app/main.py`
+- adds regression test:
+  ```txt
+  test_onboarding_checklist_schema_import_is_registered
+  ```
+- bumps app version:
+  ```txt
+  3.21.2
+  ```
+- documentation:
+  ```txt
+  docs/ci-fix-v3212.md
+  ```

@@ -1331,3 +1331,13 @@ def test_onboarding_checklist_endpoint():
     assert payload["progress"]["done"] >= 1
     assert any(step["key"] == "import_invoices" for step in payload["steps"])
     assert "invoice_count" in payload["context"]
+
+
+def test_onboarding_checklist_schema_import_is_registered():
+    matching_routes = [
+        route
+        for route in app.routes
+        if getattr(route, "path", None) == "/organizations/{org_id}/onboarding"
+    ]
+    assert len(matching_routes) == 1
+    assert getattr(matching_routes[0], "response_model", None).__name__ == "OnboardingChecklistOut"
