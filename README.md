@@ -1571,3 +1571,18 @@ This version adds a sanitized public deployment status page:
   ```txt
   docs/public-status.md
   ```
+
+
+---
+
+## v3.20.1 CI fix
+
+This patch fixes the backend CI failure from v3.20:
+
+- updates `test_deployment_readiness_endpoint`
+- removes exact app-version pinning from the test
+- keeps v3.20 app behavior unchanged
+- documentation:
+  ```txt
+  docs/ci-fix-v3201.md
+  ```

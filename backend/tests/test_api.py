@@ -1275,6 +1275,7 @@ def test_document_upload_endpoint():
 
 
 def test_deployment_readiness_endpoint():
+    # Deployment readiness should not pin an exact app version; every release bumps it.
     _, token = register_user("deployment-readiness-owner")
 
     response = client.get(
@@ -1284,7 +1285,7 @@ def test_deployment_readiness_endpoint():
     assert response.status_code == 200, response.text
     payload = response.json()
     assert payload["app"]
-    assert payload["version"] == "3.19.0"
+    assert payload["version"]
     assert payload["overall_status"] in {"pass", "warn", "fail"}
     assert payload["summary"]["total"] == len(payload["checks"])
     assert any(check["key"] == "database" for check in payload["checks"])
