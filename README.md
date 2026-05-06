@@ -1697,3 +1697,20 @@ This version adds a pilot setup workspace:
   ```txt
   docs/pilot-workspace.md
   ```
+
+
+---
+
+## v3.23 UI refresh
+
+This version refreshes the main frontend layout:
+
+- normalizes frontend API base URL handling
+- prevents `//auth/register` and trailing-slash API issues
+- improves login/register page layout
+- separates dashboard topbar and navigation
+- adds a cleaner responsive UI system in `frontend/app/styles.css`
+- documentation:
+  ```txt
+  docs/ui-refresh-v323.md
+  ```

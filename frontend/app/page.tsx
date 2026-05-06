@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { AlertTriangle, CheckCircle2, FileText, LogOut, UploadCloud, BellRing } from "lucide-react";
-import { apiFetch, clearToken, getToken, setToken } from "./api";
+import { API_BASE, apiFetch, clearToken, getToken, setToken } from "./api";
 
 export default function Home() {
   const [ready, setReady] = useState(false);
@@ -105,7 +105,7 @@ export default function Home() {
     setErr("");
     setMsg("");
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000"}/auth/password-reset/request`, {
+      const response = await fetch(`${API_BASE}/auth/password-reset/request`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: resetEmail }),
@@ -183,7 +183,7 @@ export default function Home() {
   async function downloadDocument(documentId: number, filename: string) {
     if (!active) return;
     const token = getToken();
-    const base = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
+    const base = API_BASE;
     const response = await fetch(`${base}/organizations/${active}/documents/${documentId}/download`, {
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -258,7 +258,7 @@ export default function Home() {
 
   async function downloadExport(path: string, filename: string) {
     const token = getToken();
-    const base = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
+    const base = API_BASE;
     const response = await fetch(`${base}${path}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -281,9 +281,27 @@ export default function Home() {
 
   if (!authed) {
     return (
-      <main className="container">
-        <h1>FacturaGuard MVP</h1><p><a href="/landing">Landing</a> · <a href="/pricing">Prețuri</a> · <a href="/roi">ROI</a> · <a href="/help">Help</a> · <a href="/templates">Templates</a> · <a href="/onboarding">Onboarding</a></p>
-        <div className="card" style={{ maxWidth: 520 }}>
+      <main className="auth-shell">
+        <section className="auth-hero">
+          <span className="eyebrow">FacturaGuard MVP</span>
+          <h1>Monitorizare e-Factura pentru firme și contabili.</h1>
+          <p>Importă facturi, urmărește statusuri, pregătește ANAF/SPV și testează billing-ul NETOPIA într-un workspace clar.</p>
+          <div className="auth-links">
+            <a href="/landing">Landing</a>
+            <a href="/pricing">Prețuri</a>
+            <a href="/roi">ROI</a>
+            <a href="/help">Help</a>
+            <a href="/templates">Templates</a>
+            <a href="/status">Status</a>
+          </div>
+          <div className="hero-proof-grid">
+            <div><b>ANAF/SPV</b><span>Mock acum, real ulterior</span></div>
+            <div><b>NETOPIA</b><span>Billing sandbox/live</span></div>
+            <div><b>UBL XML</b><span>Pregătire validare</span></div>
+          </div>
+        </section>
+        <section className="auth-panel">
+        <div className="card auth-card">
           <h2>{mode === "register" ? "Creează cont" : "Login"}</h2>
           <form onSubmit={submitAuth} className="grid">
             {mode === "register" && <input className="input" placeholder="Nume" value={auth.name} onChange={(e) => setAuth({ ...auth, name: e.target.value })} />}
@@ -306,16 +324,39 @@ export default function Home() {
           {err && <p className="error">{err}</p>}
           {msg && <p className="success">{msg}</p>}
         </div>
+        </section>
       </main>
     );
   }
 
   return (
-    <main className="container">
-      <div className="header">
-        <div><h1>FacturaGuard Dashboard</h1><p>MVP e-Factura monitorizare.</p></div>
-        <div style={{ display: "flex", gap: 8 }}><a className="btn secondary" href="/developer">Developer</a><a className="btn secondary" href="/ubl">UBL XML</a><a className="btn secondary" href="/integrations">Integrări</a><a className="btn secondary" href="/deployment">Deployment</a><a className="btn secondary" href="/billing">Billing</a><a className="btn secondary" href="/api-keys">API keys</a><a className="btn secondary" href="/system-status">Status</a><a className="btn secondary" href="/work-queue">Work queue</a><a className="btn secondary" href="/invoice-metadata">Tags/Prioritate</a><a className="btn secondary" href="/invoice-notes">Note facturi</a><a className="btn secondary" href="/client-portal">Portal client</a><a className="btn secondary" href="/settings">Setări</a><a className="btn secondary" href="/audit">Audit</a><a className="btn secondary" href="/pilot">Pilot</a><a className="btn secondary" href="/onboarding">Onboarding</a><button className="btn secondary" onClick={logout}><LogOut size={16} /> Logout</button></div>
+    <main className="container app-shell">
+      <div className="app-topbar">
+        <div>
+          <span className="eyebrow">FacturaGuard</span>
+          <h1>Dashboard</h1>
+          <p>MVP e-Factura monitorizare, billing, documente și pregătire pilot.</p>
+        </div>
+        <button className="btn secondary" onClick={logout}><LogOut size={16} /> Logout</button>
       </div>
+
+      <nav className="app-nav" aria-label="Main navigation">
+        <a href="/pilot">Pilot</a>
+        <a href="/onboarding">Onboarding</a>
+        <a href="/deployment">Deployment</a>
+        <a href="/billing">Billing</a>
+        <a href="/ubl">UBL XML</a>
+        <a href="/integrations">Integrări</a>
+        <a href="/work-queue">Work queue</a>
+        <a href="/invoice-metadata">Tags</a>
+        <a href="/invoice-notes">Note</a>
+        <a href="/client-portal">Portal client</a>
+        <a href="/api-keys">API keys</a>
+        <a href="/system-status">Status</a>
+        <a href="/settings">Setări</a>
+        <a href="/audit">Audit</a>
+        <a href="/developer">Developer</a>
+      </nav>
 
       {err && <p className="error">{err}</p>}
       {msg && <p className="success">{msg}</p>}
